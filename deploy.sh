@@ -19,5 +19,7 @@ fi
 
 cd $REPO_DIR && git pull origin main
 
+cd cmd
+
 tmux new-session -d -s $SESSION_NAME
 tmux_send "go run main.go"
