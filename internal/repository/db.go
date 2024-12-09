@@ -1,11 +1,11 @@
-package db
+package repository
 
 import (
 	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"os"
-	"tg_shop/internal/models"
+	"tg_shop/internal/model"
 )
 
 func ConnectDB() (*gorm.DB, error) {
@@ -22,9 +22,9 @@ func ConnectDB() (*gorm.DB, error) {
 	}
 
 	err = db.AutoMigrate(
-		&models.User{},
-		&models.Ad{},
-		&models.AdminAction{},
+		&model.Category{},
+		&model.User{},
+		&model.Ad{},
 	)
 
 	if err != nil {

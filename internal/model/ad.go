@@ -1,4 +1,4 @@
-package models
+package model
 
 type Ad struct {
 	ID          uint    `gorm:"primaryKey"`
@@ -6,7 +6,8 @@ type Ad struct {
 	Description string  `gorm:"not null"`
 	Price       float64 `gorm:"not null"`
 	Files       string  `gorm:"type:text"`
-	SellerID    uint    `gorm:"not null"`
+	CategoryID  int     `gorm:"not null"`
+	SellerID    string  `gorm:"uniqueIndex;not null"`
 	Stock       int     `gorm:"not null"`
 	Approved    bool    `gorm:"default:false"`
 }
