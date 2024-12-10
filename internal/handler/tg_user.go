@@ -3,59 +3,107 @@ package handler
 import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"gorm.io/gorm"
 	"log"
+	"strings"
+	"tg_shop/internal/model"
 )
 
 func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
 
-	user, err := h.services.GetUserById(int(telegramID))
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Добро пожаловать! Пожалуйста, введите своё имя:")
-			h.pendingUsernames[telegramID] = true // Добавляем в ожидание
-			_, sendErr := bot.Send(msg)
-			if sendErr != nil {
-				log.Printf("Error sending message: %v", sendErr)
-			}
-			return
-		}
-		log.Printf("Error checking user: %v", err)
-		return
-	}
+	h.userStates[telegramID] = "language"
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Привет, %s! Ваш баланс: %.2f", user.Username, user.Balance))
-	_, sendErr := bot.Send(msg)
-	if sendErr != nil {
-		log.Printf("Error sending message: %v", sendErr)
-	}
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Пожалуйста, выберите язык:")
+	languageKeyboard := tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("🇷🇺Русский"),
+			tgbotapi.NewKeyboardButton("🇺🇸English"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("🇪🇸Spanish"),
+			tgbotapi.NewKeyboardButton("🇩🇪Deutsch"),
+		),
+	)
+	msg.ReplyMarkup = languageKeyboard
+	bot.Send(msg)
 }
 
 func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
-	messageText := update.Message.Text
+	messageText := strings.TrimSpace(update.Message.Text)
 
-	// Проверяем, ждём ли мы ввода имени от пользователя
-	if h.pendingUsernames[telegramID] {
-		// Сохраняем пользователя в базе
-		newUser, err := h.services.CreateUser(int(telegramID), messageText)
-		if err != nil {
-			log.Printf("Error creating user: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка при создании пользователя. Попробуйте снова.")
+	log.Printf("User %d state: %s", telegramID, h.userStates[telegramID])
+	log.Printf("Received message: %s", messageText)
+	log.Printf(h.userStates[telegramID])
+
+	if h.userStates[telegramID] == "language" {
+		var language string
+		switch messageText {
+		case "🇷🇺Русский":
+			language = "ru"
+		case "🇺🇸English":
+			language = "en"
+		case "🇪🇸Spanish":
+			language = "es"
+		case "🇩🇪Deutsch":
+			language = "de"
+		default:
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Выберите язык из предложенных вариантов.")
 			bot.Send(msg)
 			return
 		}
 
-		// Уведомляем об успешном создании
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ваш профиль создан!\nВаше имя: %s\nБаланс: %.2f", newUser.Username, newUser.Balance))
+		delete(h.userStates, telegramID)
+		h.userStates[telegramID] = "username"
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, h.getLocalizedMessage(language, "Теперь введите своё имя:"))
+		bot.Send(msg)
+		return
+	}
+
+	if h.userStates[telegramID] == "username" {
+		delete(h.userStates, telegramID)
+		return
+	}
+
+	if language != "" {
+		newUser := model.User{
+			TelegramID: int(telegramID),
+			Username:   messageText,
+			Language:   language,
+		}
+
+		savedUser, err := h.services.CreateUser(newUser.TelegramID, newUser)
+		if err != nil {
+			log.Printf("Error creating user: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Ошибка при создании пользователя. Попробуйте снова.")
+			bot.Send(msg)
+			return
+		}
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
+			"Ваш профиль создан!\nВаше имя: %s\nЯзык: %s\nБаланс: %.2f",
+			savedUser.Username, savedUser.Language, savedUser.Balance,
+		))
 		bot.Send(msg)
 
-		// Удаляем пользователя из списка ожидающих
-		delete(h.pendingUsernames, telegramID)
-	} else {
-		// Если мы не ожидаем имя, просто игнорируем сообщение
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Команда не распознана.")
-		bot.Send(msg)
+		delete(h.userStates, telegramID)
+		return
 	}
+
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Команда не распознана.")
+	bot.Send(msg)
+}
+
+func (h *Handler) getLocalizedMessage(language, defaultMessage string) string {
+	messages := map[string]map[string]string{
+		"ru": {"Теперь введите своё имя:": "Теперь введите своё имя:"},
+		"en": {"Теперь введите своё имя:": "Please enter your name:"},
+		"es": {"Теперь введите своё имя:": "Por favor, introduzca su nombre:"},
+		"de": {"Теперь введите своё имя:": "Bitte geben Sie Ihren Namen ein:"},
+	}
+
+	if localized, ok := messages[language][defaultMessage]; ok {
+		return localized
+	}
+	return defaultMessage
 }

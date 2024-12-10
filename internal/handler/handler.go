@@ -7,13 +7,15 @@ import (
 )
 
 type Handler struct {
-	services         *service.Service
-	pendingUsernames map[int64]bool // Telegram ID -> ждём имя
+	services   *service.Service
+	userStates map[int64]string // Telegram ID -> состояние или язык
 }
 
 func NewHandler(services *service.Service) *Handler {
-	return &Handler{services: services,
-		pendingUsernames: make(map[int64]bool)}
+	return &Handler{
+		services:   services,
+		userStates: make(map[int64]string),
+	}
 }
 
 func (h *Handler) InitRoutes() *gin.Engine {

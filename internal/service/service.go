@@ -16,6 +16,6 @@ func NewService(repos *repository.Repository) *Service {
 }
 
 type User interface {
-	CreateUser(id int, username string) (model.User, error)
+	CreateUser(id int, user model.User) (model.User, error)
 	GetUserById(id int) (model.User, error)
 }

@@ -15,16 +15,12 @@ func NewUserService(repo repository.User) *UserService {
 	}
 }
 
-func (s *UserService) CreateUser(id int, username string) (model.User, error) {
-	newUser := model.User{
-		TelegramID: id,
-		Username:   username,
-	}
-	user, err := s.repo.CreateUser(newUser)
+func (s *UserService) CreateUser(id int, user model.User) (model.User, error) {
+	newUser, err := s.repo.CreateUser(user)
 	if err != nil {
 		return model.User{}, err
 	}
-	return user, nil
+	return newUser, nil
 }
 
 func (s *UserService) GetUserById(id int) (model.User, error) {

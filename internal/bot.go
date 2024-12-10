@@ -28,7 +28,7 @@ func BotProcess(handlers *handler.Handler) {
 			case "/start":
 				handlers.HandleStart(bot, update)
 			default:
-				log.Printf("Unhandled message: %s", update.Message.Text)
+				handlers.HandleUserInput(bot, update)
 			}
 		}
 	}
