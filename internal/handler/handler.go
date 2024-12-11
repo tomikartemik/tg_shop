@@ -8,7 +8,7 @@ import (
 
 type Handler struct {
 	services   *service.Service
-	userStates map[int64]string // Telegram ID -> состояние или язык
+	userStates map[int64]string
 }
 
 func NewHandler(services *service.Service) *Handler {

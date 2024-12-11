@@ -14,7 +14,7 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 }
 
 func (repo *UserRepository) CreateUser(user model.User) (model.User, error) {
-	err := repo.db.Create(user).Error
+	err := repo.db.Create(&user).Error
 	if err != nil {
 		return user, err
 	}
@@ -24,8 +24,20 @@ func (repo *UserRepository) CreateUser(user model.User) (model.User, error) {
 func (repo *UserRepository) GetUserById(id int) (model.User, error) {
 	var user model.User
 	err := repo.db.Where("telegram_id = ?", id).First(&user).Error
+	return user, err
+}
+
+func (repo *UserRepository) UpdateUser(user model.User) (model.User, error) {
+	var existingUser model.User
+	err := repo.db.Where("telegram_id = ?", user.TelegramID).First(&existingUser).Error
 	if err != nil {
-		return user, err
+		return model.User{}, err
 	}
-	return user, nil
+
+	err = repo.db.Model(&existingUser).Updates(user).Error
+	if err != nil {
+		return model.User{}, err
+	}
+
+	return existingUser, nil
 }

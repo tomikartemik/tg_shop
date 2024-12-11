@@ -18,4 +18,5 @@ func NewRepository(db *gorm.DB) *Repository {
 type User interface {
 	CreateUser(user model.User) (model.User, error)
 	GetUserById(id int) (model.User, error)
+	UpdateUser(user model.User) (model.User, error)
 }

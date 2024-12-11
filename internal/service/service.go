@@ -18,4 +18,5 @@ func NewService(repos *repository.Repository) *Service {
 type User interface {
 	CreateUser(id int, user model.User) (model.User, error)
 	GetUserById(id int) (model.User, error)
+	CreateOrUpdateUser(user model.User) (model.User, error)
 }
