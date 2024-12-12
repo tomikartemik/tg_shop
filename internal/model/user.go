@@ -12,3 +12,11 @@ type User struct {
 	Language     string  `gorm:"not null;default:en"`
 	Banned       bool    `gorm:"default:false"`
 }
+
+type UserAsSeller struct {
+	TelegramID   int           `json:"telegram_id"`
+	Username     string        `json:"username"`
+	Ads          []AdShortInfo `json:"ads"`
+	Rating       float64       `json:"rating"`
+	ReviewNumber int           `json:"reviewNumber"`
+}
