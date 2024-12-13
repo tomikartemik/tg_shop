@@ -30,6 +30,8 @@ func BotProcess(handlers *handler.Handler) {
 			default:
 				handlers.HandleUserInput(bot, update)
 			}
+		} else if update.CallbackQuery != nil {
+			handlers.HandleCallbackQuery(bot, update.CallbackQuery)
 		}
 	}
 }

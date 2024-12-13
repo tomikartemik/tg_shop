@@ -21,8 +21,15 @@ func NewAdService(repo repository.Ad, repoUser repository.User, repoCategory rep
 	}
 }
 
-func (s *AdService) CreateAd() {
-	// Сам пропишешь, не знаю, как тебе удобнее будет
+func (s *AdService) CreateAd(ad model.Ad) (model.Ad, error) {
+	ad.Approved = false
+
+	createdAd, err := s.repo.CreateAd(ad)
+	if err != nil {
+		return model.Ad{}, err
+	}
+
+	return createdAd, nil
 }
 
 func (s *AdService) GetAdList(categoryIDStr string) ([]model.AdShortInfo, error) {
@@ -137,4 +144,13 @@ func (s *AdService) convertAdsToAdsShortInfo(ads []model.Ad) ([]model.AdShortInf
 	}
 
 	return adsShortInfo, nil
+}
+
+func (s *AdService) GetAdsByUserID(userID int) ([]model.AdShortInfo, error) {
+	ads, err := s.repo.GetAdsByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.convertAdsToAdsShortInfo(ads)
 }

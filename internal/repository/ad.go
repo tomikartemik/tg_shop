@@ -42,9 +42,18 @@ func (repo *AdRepository) GetAdListByCategory(categoryID int) ([]model.Ad, error
 
 func (repo *AdRepository) GetAdById(id int) (model.Ad, error) {
 	ad := model.Ad{}
-	err := repo.db.Where("id = ?", id).First(&ad).Error
+	err := repo.db.Where("seller_id = ?", id).First(&ad).Error
 	if err != nil {
 		return model.Ad{}, err
 	}
 	return ad, nil
+}
+
+func (repo *AdRepository) GetAdsByUserID(userID int) ([]model.Ad, error) {
+	var ads []model.Ad
+	err := repo.db.Where("seller_id = ?", userID).Find(&ads).Error
+	if err != nil {
+		return nil, err
+	}
+	return ads, nil
 }

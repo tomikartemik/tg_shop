@@ -8,7 +8,7 @@ type Ad struct {
 	Files       string  `gorm:"type:text"`
 	PhotoURL    string  `gorm:"type:text"`
 	CategoryID  int     `gorm:"not null"`
-	SellerID    int     `gorm:"uniqueIndex;not null"`
+	SellerID    int     `gorm:"not null"`
 	Stock       int     `gorm:"not null"`
 	Approved    bool    `gorm:"default:false"`
 }

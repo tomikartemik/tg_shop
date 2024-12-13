@@ -53,7 +53,6 @@ func (s *UserService) CreateOrUpdateUser(user model.User) (model.User, error) {
 	}
 
 	log.Printf("User found, updating user with TelegramID: %d", existingUser.TelegramID)
-	existingUser.Language = user.Language
 	if user.Username != "" {
 		existingUser.Username = user.Username
 	}
