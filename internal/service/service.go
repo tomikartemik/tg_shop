@@ -25,7 +25,7 @@ type User interface {
 	CreateOrUpdateUser(user model.User) (model.User, error)
 	GetUserAsSellerByID(telegramIDStr string) (model.UserAsSeller, error)
 	IsAdmin(userID int) (bool, error)
-	BroadcastMessage(message string) error
+	//BroadcastMessage(message string) error
 }
 
 type Ad interface {
