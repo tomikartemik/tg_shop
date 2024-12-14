@@ -5,7 +5,7 @@ import "time"
 type User struct {
 	TelegramID    int       `gorm:"primaryKey;uniqueIndex;not null" json:"telegram_id"`
 	Username      string    `gorm:"not null;default:'default_user'" json:"username"`
-	PhotoURL      string    `gorm:"not null'" json:"photo_url"`
+	PhotoURL      string    `gorm:"not null;default:'uploads/default_hell_ava.jpg" json:"photo_url"`
 	IsAdmin       bool      `gorm:"not null;default:false" json:"is_admin"`
 	Balance       float64   `gorm:"default:0.0" json:"balance"`
 	Ads           []Ad      `gorm:"foreignKey:SellerID" json:"ads"`

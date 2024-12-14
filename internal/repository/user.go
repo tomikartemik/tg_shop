@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"tg_shop/internal/model"
 )
@@ -40,4 +41,13 @@ func (repo *UserRepository) UpdateUser(user model.User) (model.User, error) {
 	}
 
 	return existingUser, nil
+}
+
+func (repo *UserRepository) GetAllUsers() ([]model.User, error) {
+	var users []model.User
+	err := repo.db.Find(&users).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users: %w", err)
+	}
+	return users, nil
 }

@@ -23,6 +23,7 @@ type User interface {
 	CreateUser(user model.User) (model.User, error)
 	GetUserById(id int) (model.User, error)
 	UpdateUser(user model.User) (model.User, error)
+	GetAllUsers() ([]model.User, error)
 }
 
 type Ad interface {
@@ -32,6 +33,8 @@ type Ad interface {
 	GetAdBySellerId(id int) (model.Ad, error)
 	GetAdsByUserID(userID int) ([]model.Ad, error)
 	GetAdById(id int) (model.Ad, error)
+	UpdateAd(ad model.Ad) (model.Ad, error)
+	DeleteAd(adID int) error // Добавляем метод удаления
 }
 
 type Category interface {

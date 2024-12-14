@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"tg_shop/internal/model"
 )
@@ -65,4 +66,25 @@ func (repo *AdRepository) GetAdsByUserID(userID int) ([]model.Ad, error) {
 		return nil, err
 	}
 	return ads, nil
+}
+
+func (repo *AdRepository) UpdateAd(ad model.Ad) (model.Ad, error) {
+	err := repo.db.Model(&ad).Updates(ad).Error
+	if err != nil {
+		return model.Ad{}, err
+	}
+	return ad, nil
+}
+
+func (repo *AdRepository) DeleteAd(adID int) error {
+	result := repo.db.Delete(&model.Ad{}, adID)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no ad found with ID: %d", adID)
+	}
+
+	return nil
 }

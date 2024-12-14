@@ -25,7 +25,11 @@ type User interface {
 	CreateOrUpdateUser(user model.User) (model.User, error)
 	GetUserAsSellerByID(telegramIDStr string) (model.UserAsSeller, error)
 	IsAdmin(userID int) (bool, error)
-	//BroadcastMessage(message string) error
+	BroadcastMessage(message string) error
+	BlockUser(userID int) error
+	GrantPremium(userID int) error
+	ChangeBalance(userID int, newBalance float64) error
+	ChangeRating(userID int, newRating float64) error
 }
 
 type Ad interface {
@@ -34,6 +38,8 @@ type Ad interface {
 	CreateAd(ad model.Ad) (model.Ad, error)
 	GetAdsByUserID(userID int) ([]model.AdShortInfo, error)
 	GetAdByID(idStr string) (model.AdInfo, error)
+	EditAd(adID int, updatedAd model.Ad) error
+	DeleteAd(adID int) error
 }
 
 type Category interface {

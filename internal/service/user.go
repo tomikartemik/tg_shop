@@ -2,11 +2,15 @@ package service
 
 import (
 	"errors"
+	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gorm.io/gorm"
 	"log"
+	"os"
 	"strconv"
 	"tg_shop/internal/model"
 	"tg_shop/internal/repository"
+	"time"
 )
 
 type UserService struct {
@@ -150,18 +154,99 @@ func (s *UserService) IsAdmin(userID int) (bool, error) {
 	return user.IsAdmin, nil
 }
 
-//func (s *UserService) BroadcastMessage(message string) error {
-//	users, err := s.repo.GetAllUsers()
-//	if err != nil {
-//		return err
-//	}
-//
-//	for _, user := range users {
-//		err := s.SendMessageToUser(user.TelegramID, message)
-//		if err != nil {
-//			log.Printf("Failed to send message to user %d: %v", user.TelegramID, err)
-//		}
-//	}
-//
-//	return nil
-//}
+func (s *UserService) BroadcastMessage(message string) error {
+	users, err := s.repo.GetAllUsers()
+	if err != nil {
+		return fmt.Errorf("failed to get all users: %w", err)
+	}
+
+	for _, user := range users {
+		if err := s.SendMessageToUser(user.TelegramID, message); err != nil {
+			log.Printf("Failed to send message to user %d: %v", user.TelegramID, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *UserService) SendMessageToUser(telegramID int, message string) error {
+	botToken := os.Getenv("BOT_TOKEN")
+	if botToken == "" {
+		return fmt.Errorf("telegram bot token not provided")
+	}
+
+	bot, err := tgbotapi.NewBotAPI(botToken)
+	if err != nil {
+		return fmt.Errorf("failed to create bot: %w", err)
+	}
+
+	msg := tgbotapi.NewMessage(int64(telegramID), message)
+	_, err = bot.Send(msg)
+	if err != nil {
+		return fmt.Errorf("failed to send message to user %d: %w", telegramID, err)
+	}
+
+	return nil
+}
+
+// BlockUser блокирует пользователя, установив флаг Banned в true
+func (s *UserService) BlockUser(userID int) error {
+	user, err := s.repo.GetUserById(userID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	user.Banned = true
+	_, updateErr := s.repo.UpdateUser(user)
+	if updateErr != nil {
+		return fmt.Errorf("failed to block user: %w", updateErr)
+	}
+
+	return nil
+}
+
+func (s *UserService) GrantPremium(userID int) error {
+	user, err := s.repo.GetUserById(userID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	user.IsPremium = true
+	user.ExpirePremium = time.Now().AddDate(0, 1, 0)
+	_, updateErr := s.repo.UpdateUser(user)
+	if updateErr != nil {
+		return fmt.Errorf("failed to grant premium: %w", updateErr)
+	}
+
+	return nil
+}
+
+func (s *UserService) ChangeBalance(userID int, newBalance float64) error {
+	user, err := s.repo.GetUserById(userID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	user.Balance = newBalance
+	_, updateErr := s.repo.UpdateUser(user)
+	if updateErr != nil {
+		return fmt.Errorf("failed to change balance: %w", updateErr)
+	}
+
+	return nil
+}
+
+func (s *UserService) ChangeRating(userID int, newRating float64) error {
+	user, err := s.repo.GetUserById(userID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	user.Rating = newRating
+	_, updateErr := s.repo.UpdateUser(user)
+	if updateErr != nil {
+		return fmt.Errorf("failed to change rating: %w", updateErr)
+	}
+
+	return nil
+}

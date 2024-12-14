@@ -26,9 +26,9 @@ func main() {
 	repos := repository.NewRepository(db)
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(services)
-	//adm_handlers := handler.NewAdminHandler(services)
+	adm_handlers := handler.NewAdminHandler(services)
 	go internal.BotProcess(handlers)
-	//go internal.AdmBotProcess(adm_handlers)
+	go internal.AdmBotProcess(adm_handlers)
 
 	srv := new(internal.Server)
 	if err := srv.Run(os.Getenv("PORT"), handlers.InitRoutes()); err != nil {
