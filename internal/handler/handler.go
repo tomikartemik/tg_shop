@@ -21,6 +21,18 @@ func NewHandler(services *service.Service) *Handler {
 	}
 }
 
+type AdminHandler struct {
+	userStates map[int64]string
+	services   *service.Service
+}
+
+func NewAdminHandler(services *service.Service) *AdminHandler {
+	return &AdminHandler{
+		userStates: make(map[int64]string),
+		services:   services,
+	}
+}
+
 func (h *Handler) InitRoutes() *gin.Engine {
 
 	router := gin.New()

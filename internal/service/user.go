@@ -141,3 +141,27 @@ func (s *UserService) convertAdsToAdsShortInfo(ads []model.Ad) ([]model.AdShortI
 
 	return adsShortInfo, nil
 }
+
+func (s *UserService) IsAdmin(userID int) (bool, error) {
+	user, err := s.repo.GetUserById(userID)
+	if err != nil {
+		return false, err
+	}
+	return user.IsAdmin, nil
+}
+
+func (s *UserService) BroadcastMessage(message string) error {
+	users, err := s.repo.GetAllUsers()
+	if err != nil {
+		return err
+	}
+
+	for _, user := range users {
+		err := s.SendMessageToUser(user.TelegramID, message)
+		if err != nil {
+			log.Printf("Failed to send message to user %d: %v", user.TelegramID, err)
+		}
+	}
+
+	return nil
+}
