@@ -60,6 +60,24 @@ func (s *AdService) GetAdList(categoryIDStr string) ([]model.AdShortInfo, error)
 	return s.convertAdsToAdsShortInfo(ads)
 }
 
+func (s *AdService) GetAdBySellerID(sellerIDStr string) (model.AdInfo, error) {
+	id, err := strconv.Atoi(sellerIDStr)
+
+	if err != nil {
+		return model.AdInfo{}, err
+	}
+
+	ad, err := s.repo.GetAdBySellerId(id)
+
+	if err != nil {
+		return model.AdInfo{}, err
+	}
+
+	adInfo, err := s.convertAdToAdInfo(ad)
+
+	return adInfo, nil
+}
+
 func (s *AdService) GetAdByID(idStr string) (model.AdInfo, error) {
 	id, err := strconv.Atoi(idStr)
 

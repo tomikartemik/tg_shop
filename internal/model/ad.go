@@ -1,15 +1,15 @@
 package model
 
 type Ad struct {
-	ID          int     `gorm:"primaryKey"`
-	Title       string  `gorm:"not null"`
-	Description string  `gorm:"not null"`
-	Price       float64 `gorm:"not null"`
-	Files       string  `gorm:"type:text"`
-	PhotoURL    string  `gorm:"type:text"`
-	CategoryID  int     `gorm:"not null"`
-	SellerID    int     `gorm:"not null"`
-	Stock       int     `gorm:"not null"`
+	ID          int     `gorm:"primaryKey" json:"id"`
+	Title       string  `gorm:"not null" json:"title"`
+	Description string  `gorm:"not null" json:"description"`
+	Price       float64 `gorm:"not null" json:"price"`
+	Files       string  `gorm:"type:text" json:"files_url"`
+	PhotoURL    string  `gorm:"type:text" json:"photo_url"`
+	CategoryID  int     `gorm:"not null" json:"category_id"`
+	SellerID    int     `gorm:"not null" json:"seller_id"`
+	Stock       int     `gorm:"not null" json:"stock"`
 	Approved    bool    `gorm:"default:false"`
 }
 
@@ -18,27 +18,27 @@ type AdInfo struct {
 	Title              string  `json:"title"`
 	Description        string  `json:"description"`
 	Price              float64 `json:"price"`
-	Files              string  `json:"files"`
-	PhotoURL           string  `gorm:"type:text"`
-	CategoryID         int     `json:"categoryID"`
-	CategoryName       string  `json:"categoryName"`
+	Files              string  `json:"files_url"`
+	PhotoURL           string  `json:"photo_url"`
+	CategoryID         int     `json:"category_id"`
+	CategoryName       string  `json:"category_name"`
 	SellerID           int     `json:"seller_id"`
 	SellerName         string  `json:"seller_name"`
 	SellerRating       float64 `json:"seller_rating"`
 	SellerReviewNumber int     `json:"seller_review_number"`
-	Stock              int     `gorm:"not null"`
+	Stock              int     `json:"stock"`
 }
 
 type AdShortInfo struct {
 	ID                 int     `json:"id"`
 	Title              string  `json:"title"`
 	Price              float64 `json:"price"`
-	PhotoURL           string  `gorm:"type:text"`
-	CategoryID         int     `json:"categoryID"`
-	CategoryName       string  `json:"categoryName"`
+	PhotoURL           string  `json:"photo_url"`
+	CategoryID         int     `json:"category_id"`
+	CategoryName       string  `json:"category_name"`
 	SellerID           int     `json:"seller_id"`
 	SellerName         string  `json:"seller_name"`
 	SellerRating       float64 `json:"seller_rating"`
 	SellerReviewNumber int     `json:"seller_review_number"`
-	Stock              int     `gorm:"not null"`
+	Stock              int     `json:"stock"`
 }

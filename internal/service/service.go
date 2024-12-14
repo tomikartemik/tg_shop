@@ -30,9 +30,10 @@ type User interface {
 
 type Ad interface {
 	GetAdList(categoryIDStr string) ([]model.AdShortInfo, error)
-	GetAdByID(idStr string) (model.AdInfo, error)
+	GetAdBySellerID(idStr string) (model.AdInfo, error)
 	CreateAd(ad model.Ad) (model.Ad, error)
 	GetAdsByUserID(userID int) ([]model.AdShortInfo, error)
+	GetAdByID(idStr string) (model.AdInfo, error)
 }
 
 type Category interface {
