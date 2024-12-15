@@ -24,6 +24,7 @@ type User interface {
 	GetUserById(id int) (model.User, error)
 	UpdateUser(user model.User) (model.User, error)
 	GetAllUsers() ([]model.User, error)
+	GetUserByUsername(username string) (model.User, error)
 }
 
 type Ad interface {

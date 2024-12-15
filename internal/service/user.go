@@ -43,27 +43,24 @@ func (s *UserService) CreateOrUpdateUser(user model.User) (model.User, error) {
 	existingUser, err := s.repo.GetUserById(user.TelegramID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Printf("User not found, creating new user with TelegramID: %d", user.TelegramID)
 			createdUser, createErr := s.repo.CreateUser(user)
 			if createErr != nil {
-				log.Printf("Error creating user: %v", createErr)
 				return model.User{}, createErr
 			}
 			return createdUser, nil
 		}
-
-		log.Printf("Unexpected error fetching user: %v", err)
 		return model.User{}, err
 	}
 
-	log.Printf("User found, updating user with TelegramID: %d", existingUser.TelegramID)
 	if user.Username != "" {
 		existingUser.Username = user.Username
+	}
+	if user.PhotoURL != "" {
+		existingUser.PhotoURL = user.PhotoURL
 	}
 
 	updatedUser, updateErr := s.repo.UpdateUser(existingUser)
 	if updateErr != nil {
-		log.Printf("Error updating user: %v", updateErr)
 		return model.User{}, updateErr
 	}
 
@@ -189,7 +186,6 @@ func (s *UserService) SendMessageToUser(telegramID int, message string) error {
 	return nil
 }
 
-// BlockUser блокирует пользователя, установив флаг Banned в true
 func (s *UserService) BlockUser(userID int) error {
 	user, err := s.repo.GetUserById(userID)
 	if err != nil {
@@ -249,4 +245,8 @@ func (s *UserService) ChangeRating(userID int, newRating float64) error {
 	}
 
 	return nil
+}
+
+func (s *UserService) GetUserByUsername(username string) (model.User, error) {
+	return s.repo.GetUserByUsername(username)
 }

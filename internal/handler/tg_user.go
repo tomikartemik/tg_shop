@@ -63,12 +63,10 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 			return
 		}
 
-		delete(h.userStates, telegramID)
+		h.userStates[telegramID] = "uploading_avatar"
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Your name is saved: %s", username))
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your name is saved. Please upload a profile picture:")
 		bot.Send(msg)
-
-		h.sendMainMenu(bot, update.Message.Chat.ID)
 		return
 	} else if h.userStates[telegramID] == "changing_name" {
 		newName := messageText
@@ -98,6 +96,71 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		delete(h.userStates, telegramID)
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 		return
+	} else if h.userStates[telegramID] == "uploading_avatar" {
+		if update.Message.Photo == nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo.")
+			bot.Send(msg)
+			return
+		}
+
+		photo := update.Message.Photo[len(update.Message.Photo)-1]
+
+		fileConfig := tgbotapi.FileConfig{FileID: photo.FileID}
+		file, err := bot.GetFile(fileConfig)
+		if err != nil {
+			log.Printf("Failed to get file from Telegram: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			bot.Send(msg)
+			return
+		}
+
+		url := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", bot.Token, file.FilePath)
+
+		response, err := http.Get(url)
+		if err != nil {
+			log.Printf("Failed to download file: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			bot.Send(msg)
+			return
+		}
+		defer response.Body.Close()
+
+		fileData, err := io.ReadAll(response.Body)
+		if err != nil {
+			log.Printf("Failed to read file data: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			bot.Send(msg)
+			return
+		}
+
+		fileName := fmt.Sprintf("%d_avatar.jpg", update.Message.From.ID)
+		filePath, err := utils.SaveFile(fileData, fileName, "./uploads")
+		if err != nil {
+			log.Printf("Error saving photo: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to save the photo. Try again.")
+			bot.Send(msg)
+			return
+		}
+
+		updatedUser := model.User{
+			TelegramID: int(update.Message.From.ID),
+			PhotoURL:   filePath,
+		}
+
+		_, err = h.services.CreateOrUpdateUser(updatedUser)
+		if err != nil {
+			log.Printf("Error updating user avatar: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to save the avatar. Please try again.")
+			bot.Send(msg)
+			return
+		}
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your profile picture is saved!")
+		bot.Send(msg)
+
+		delete(h.userStates, update.Message.From.ID)
+		h.sendMainMenu(bot, update.Message.Chat.ID)
+
 	}
 
 	h.HandleKeyboardButton(bot, update, messageText)
@@ -105,7 +168,6 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Update, messageText string) {
 	state, exists := h.userStates[update.Message.From.ID]
-
 	if exists && strings.HasPrefix(state, "creating_ad") {
 		h.handleAdCreation(bot, update, state, messageText)
 		return
@@ -117,6 +179,8 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the title for your ad:")
 		bot.Send(msg)
 	case "👤 Profile":
+		log.Printf("In switch: %s", messageText)
+
 		user, err := h.services.GetUserById(int(update.Message.From.ID))
 		if err != nil {
 			log.Printf("Error fetching user profile: %v", err)
@@ -150,10 +214,28 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			),
 		)
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, profileMessage)
-		msg.ReplyMarkup = keyboard
-		msg.ParseMode = "Markdown"
-		bot.Send(msg)
+		if user.PhotoURL == "" {
+			log.Printf("User %d has no avatar. Sending profile without photo.", user.TelegramID)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, profileMessage)
+			msg.ParseMode = "Markdown"
+			msg.ReplyMarkup = keyboard
+			bot.Send(msg)
+			return
+		}
+
+		photoMsg := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FilePath(user.PhotoURL))
+		photoMsg.Caption = profileMessage
+		photoMsg.ParseMode = "Markdown"
+		photoMsg.ReplyMarkup = keyboard
+
+		log.Printf("Sending profile with photo: %s", user.PhotoURL)
+		if _, err := bot.Send(photoMsg); err != nil {
+			log.Printf("Error sending profile photo: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load your avatar. Here is your profile information.")
+			msg.ParseMode = "Markdown"
+			msg.Text = profileMessage
+			bot.Send(msg)
+		}
 
 	case "💎 Premium":
 		context.TODO()

@@ -30,6 +30,7 @@ type User interface {
 	GrantPremium(userID int) error
 	ChangeBalance(userID int, newBalance float64) error
 	ChangeRating(userID int, newRating float64) error
+	GetUserByUsername(username string) (model.User, error)
 }
 
 type Ad interface {

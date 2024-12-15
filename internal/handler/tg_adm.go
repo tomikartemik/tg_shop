@@ -28,6 +28,9 @@ func (h *AdminHandler) sendAdminMainMenu(bot *tgbotapi.BotAPI, chatID int64) {
 			tgbotapi.NewKeyboardButton("🔍 Work with User"),
 			tgbotapi.NewKeyboardButton("📢 Broadcast Message"),
 		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("🔎 Find User by Username"),
+		),
 	)
 
 	msg := tgbotapi.NewMessage(chatID, menuMessage)
@@ -43,6 +46,52 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 	chatID := update.Message.Chat.ID
 	messageText := update.Message.Text
 
+	if state, exists := h.userStates[chatID]; exists {
+		switch {
+		case state == "searching_user":
+			h.handleUserSearch(bot, chatID, messageText)
+		case state == "broadcasting_message":
+			h.handleBroadcast(bot, chatID, messageText)
+		case state == "searching_user_by_username":
+			h.handleFindUserByUsername(bot, chatID, messageText)
+			delete(h.userStates, chatID)
+		case strings.HasPrefix(state, "changing_balance_"):
+			userID, _ := strconv.Atoi(strings.TrimPrefix(state, "changing_balance_"))
+			h.handleChangeBalance(bot, chatID, userID, messageText)
+		case strings.HasPrefix(state, "changing_rating_"):
+			userID, _ := strconv.Atoi(strings.TrimPrefix(state, "changing_rating_"))
+			h.handleChangeRating(bot, chatID, userID, messageText)
+		case strings.HasPrefix(state, "deleting_ad_"):
+			adID, _ := strconv.Atoi(strings.TrimPrefix(state, "deleting_ad_"))
+			h.handleDeleteAd(bot, chatID, adID, messageText)
+		case strings.HasPrefix(state, "waiting_for_ad_id_"):
+			adID, err := strconv.Atoi(messageText)
+			if err != nil {
+				msg := tgbotapi.NewMessage(chatID, "Invalid ad ID. Please enter a numeric value:")
+				bot.Send(msg)
+				return
+			}
+
+			err = h.services.Ad.DeleteAd(adID)
+			if err != nil {
+				log.Printf("Error deleting ad: %v", err)
+				msg := tgbotapi.NewMessage(chatID, "Failed to delete the ad. Please try again.")
+				bot.Send(msg)
+				return
+			}
+
+			msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad with ID %d deleted successfully.", adID))
+			bot.Send(msg)
+
+			delete(h.userStates, chatID)
+			return
+		default:
+			h.sendUnknownCommand(bot, chatID)
+		}
+		delete(h.userStates, chatID)
+		return
+	}
+
 	switch messageText {
 	case "🔍 Work with User":
 		h.userStates[chatID] = "searching_user"
@@ -52,6 +101,11 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 	case "📢 Broadcast Message":
 		h.userStates[chatID] = "broadcasting_message"
 		msg := tgbotapi.NewMessage(chatID, "Enter the message to broadcast:")
+		bot.Send(msg)
+
+	case "🔎 Find User by Username":
+		h.userStates[chatID] = "searching_user_by_username"
+		msg := tgbotapi.NewMessage(chatID, "Enter the username of the user:")
 		bot.Send(msg)
 
 	default:
@@ -75,19 +129,18 @@ func (h *AdminHandler) handleUserSearch(bot *tgbotapi.BotAPI, chatID int64, user
 	}
 
 	ads, err := h.services.Ad.GetAdsByUserID(userID)
-	if err != nil || len(ads) == 0 {
-		msg := tgbotapi.NewMessage(chatID, "This user has no ads.")
-		bot.Send(msg)
-		return
-	}
-
 	userInfo := fmt.Sprintf(
-		"User Info:\nID: %d\nName: %s\nBalance: %.2f\nRating: %.2f\nPremium: %t\n\nAds:",
+		"User Info:\nID: %d\nName: %s\nBalance: %.2f\nRating: %.2f\nPremium: %t",
 		user.TelegramID, user.Username, user.Balance, user.Rating, user.IsPremium,
 	)
 
-	for _, ad := range ads {
-		userInfo += fmt.Sprintf("\nID: %d, Title: %s, Price: %.2f", ad.ID, ad.Title, ad.Price)
+	if len(ads) > 0 {
+		userInfo += "\n\nUser Ads:"
+		for _, ad := range ads {
+			userInfo += fmt.Sprintf("\n- ID: %d, Title: %s, Price: %.2f", ad.ID, ad.Title, ad.Price)
+		}
+	} else {
+		userInfo += "\n\nNo ads found for this user."
 	}
 
 	msg := tgbotapi.NewMessage(chatID, userInfo)
@@ -110,13 +163,95 @@ func (h *AdminHandler) handleUserSearch(bot *tgbotapi.BotAPI, chatID int64, user
 	bot.Send(msg)
 }
 
+func (h *AdminHandler) handleGrantPremium(bot *tgbotapi.BotAPI, chatID int64, userID int) {
+	err := h.services.User.GrantPremium(userID)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Failed to grant premium status. Please try again.")
+		bot.Send(msg)
+		return
+	}
+	msg := tgbotapi.NewMessage(chatID, "Premium status granted successfully.")
+	bot.Send(msg)
+}
+
+func (h *AdminHandler) handleChangeBalance(bot *tgbotapi.BotAPI, chatID int64, userID int, balanceText string) {
+	newBalance, err := strconv.ParseFloat(balanceText, 64)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Invalid balance. Please enter a numeric value.")
+		bot.Send(msg)
+		return
+	}
+
+	err = h.services.User.ChangeBalance(userID, newBalance)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Failed to change balance.")
+		bot.Send(msg)
+		return
+	}
+
+	msg := tgbotapi.NewMessage(chatID, "Balance updated successfully.")
+	bot.Send(msg)
+}
+
+func (h *AdminHandler) handleChangeRating(bot *tgbotapi.BotAPI, chatID int64, userID int, ratingText string) {
+	newRating, err := strconv.ParseFloat(ratingText, 64)
+	if err != nil || newRating < 0 || newRating > 5 {
+		msg := tgbotapi.NewMessage(chatID, "Invalid rating. Please enter a value between 0 and 5.")
+		bot.Send(msg)
+		return
+	}
+
+	err = h.services.User.ChangeRating(userID, newRating)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Failed to change rating.")
+		bot.Send(msg)
+		return
+	}
+
+	msg := tgbotapi.NewMessage(chatID, "Rating updated successfully.")
+	bot.Send(msg)
+}
+
+func (h *AdminHandler) handleDeleteAd(bot *tgbotapi.BotAPI, chatID int64, adID int, messageText string) {
+	err := h.services.Ad.DeleteAd(adID)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Failed to delete the ad. Please try again.")
+		bot.Send(msg)
+		return
+	}
+
+	msg := tgbotapi.NewMessage(chatID, "Ad deleted successfully.")
+	bot.Send(msg)
+}
+
+func (h *AdminHandler) handleBroadcast(bot *tgbotapi.BotAPI, chatID int64, messageText string) {
+	err := h.services.User.BroadcastMessage(messageText)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Failed to broadcast message.")
+		bot.Send(msg)
+		return
+	}
+	msg := tgbotapi.NewMessage(chatID, "Message broadcasted successfully!")
+	bot.Send(msg)
+}
+
+func (h *AdminHandler) sendUnknownCommand(bot *tgbotapi.BotAPI, chatID int64) {
+	msg := tgbotapi.NewMessage(chatID, "Command not recognized.")
+	bot.Send(msg)
+}
+
 func (h *AdminHandler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbotapi.CallbackQuery) {
 	data := callbackQuery.Data
 	chatID := callbackQuery.Message.Chat.ID
 
 	switch {
 	case strings.HasPrefix(data, "block_"):
-		userID, _ := strconv.Atoi(strings.TrimPrefix(data, "block_"))
+		userID, err := strconv.Atoi(strings.TrimPrefix(data, "block_"))
+		if err != nil {
+			msg := tgbotapi.NewMessage(chatID, "Invalid user ID.")
+			bot.Send(msg)
+			return
+		}
 		h.handleBlockUser(bot, chatID, userID)
 
 	case strings.HasPrefix(data, "change_balance_"):
@@ -132,13 +267,18 @@ func (h *AdminHandler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *
 		bot.Send(msg)
 
 	case strings.HasPrefix(data, "grant_premium_"):
-		userID, _ := strconv.Atoi(strings.TrimPrefix(data, "grant_premium_"))
+		userID, err := strconv.Atoi(strings.TrimPrefix(data, "grant_premium_"))
+		if err != nil {
+			msg := tgbotapi.NewMessage(chatID, "Invalid user ID.")
+			bot.Send(msg)
+			return
+		}
 		h.handleGrantPremium(bot, chatID, userID)
 
 	case strings.HasPrefix(data, "delete_ad_"):
-		adID := strings.TrimPrefix(data, "delete_ad_")
-		h.userStates[chatID] = fmt.Sprintf("deleting_ad_%s", adID)
-		msg := tgbotapi.NewMessage(chatID, "Enter the ad ID to delete:")
+		userID, _ := strconv.Atoi(strings.TrimPrefix(data, "delete_ad_"))
+		h.userStates[chatID] = fmt.Sprintf("waiting_for_ad_id_%s", userID)
+		msg := tgbotapi.NewMessage(chatID, "Please enter the ID of the ad you want to delete:")
 		bot.Send(msg)
 
 	default:
@@ -148,17 +288,6 @@ func (h *AdminHandler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *
 
 	callbackResponse := tgbotapi.NewCallback(callbackQuery.ID, "")
 	bot.Request(callbackResponse)
-}
-
-func (h *AdminHandler) handleGrantPremium(bot *tgbotapi.BotAPI, chatID int64, userID int) {
-	err := h.services.User.GrantPremium(userID)
-	if err != nil {
-		msg := tgbotapi.NewMessage(chatID, "Failed to grant premium status. Please try again.")
-		bot.Send(msg)
-		return
-	}
-	msg := tgbotapi.NewMessage(chatID, "Premium status granted successfully.")
-	bot.Send(msg)
 }
 
 func (h *AdminHandler) handleBlockUser(bot *tgbotapi.BotAPI, chatID int64, userID int) {
@@ -171,7 +300,20 @@ func (h *AdminHandler) handleBlockUser(bot *tgbotapi.BotAPI, chatID int64, userI
 	msg := tgbotapi.NewMessage(chatID, "User has been blocked successfully.")
 	bot.Send(msg)
 }
-func (h *AdminHandler) sendUnknownCommand(bot *tgbotapi.BotAPI, chatID int64) {
-	msg := tgbotapi.NewMessage(chatID, "Command not recognized.")
+
+func (h *AdminHandler) handleFindUserByUsername(bot *tgbotapi.BotAPI, chatID int64, username string) {
+	user, err := h.services.User.GetUserByUsername(username)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("User with username '%s' not found.", username))
+		bot.Send(msg)
+		return
+	}
+
+	userInfo := fmt.Sprintf(
+		"User Info:\nID: %d\nName: %s\nBalance: %.2f\nRating: %.2f\nPremium: %t",
+		user.TelegramID, user.Username, user.Balance, user.Rating, user.IsPremium,
+	)
+
+	msg := tgbotapi.NewMessage(chatID, userInfo)
 	bot.Send(msg)
 }

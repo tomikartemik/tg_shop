@@ -51,3 +51,9 @@ func (repo *UserRepository) GetAllUsers() ([]model.User, error) {
 	}
 	return users, nil
 }
+
+func (r *UserRepository) GetUserByUsername(username string) (model.User, error) {
+	var user model.User
+	err := r.db.Where("username = ?", username).First(&user).Error
+	return user, err
+}
