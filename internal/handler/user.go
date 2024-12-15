@@ -33,7 +33,7 @@ func (h *Handler) GetUserAsSellerByID(c *gin.Context) {
 }
 
 func (h *Handler) SearchUsers(c *gin.Context) {
-	query := c.Query("tg_id")
+	query := c.Query("username")
 	users, err := h.services.SearchUsers(query)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
