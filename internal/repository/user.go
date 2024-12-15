@@ -60,7 +60,7 @@ func (repo *UserRepository) GetUserByUsername(username string) (model.User, erro
 
 func (repo *UserRepository) SearchUsers(query string) ([]model.User, error) {
 	var users []model.User
-	err := repo.db.Where("username ILIKE ?", "%"+query+"%").Find(&users).Error
+	err := repo.db.Where("username ILIKE ?", query+"%").Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
