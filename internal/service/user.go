@@ -250,3 +250,7 @@ func (s *UserService) ChangeRating(userID int, newRating float64) error {
 func (s *UserService) GetUserByUsername(username string) (model.User, error) {
 	return s.repo.GetUserByUsername(username)
 }
+
+func (s *UserService) SearchUsers(query string) ([]model.User, error) {
+	return s.repo.SearchUsers(query)
+}

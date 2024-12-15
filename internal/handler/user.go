@@ -31,3 +31,12 @@ func (h *Handler) GetUserAsSellerByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, userAsSeller)
 }
+
+func (h *Handler) SearchUsers(c *gin.Context) {
+	query := c.Query("tg_id")
+	users, err := h.services.SearchUsers(query)
+	if err != nil {
+		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+	c.JSON(http.StatusOK, users)
+}

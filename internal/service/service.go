@@ -31,6 +31,7 @@ type User interface {
 	ChangeBalance(userID int, newBalance float64) error
 	ChangeRating(userID int, newRating float64) error
 	GetUserByUsername(username string) (model.User, error)
+	SearchUsers(query string) ([]model.User, error)
 }
 
 type Ad interface {
