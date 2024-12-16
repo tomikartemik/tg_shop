@@ -26,6 +26,8 @@ type User interface {
 	GetAllUsers() ([]model.User, error)
 	GetUserByUsername(username string) (model.User, error)
 	SearchUsers(query string) ([]model.User, error)
+	AddPurchase(userID, adID int) error
+	ChangeBalance(userID int, newBlance float64) error
 }
 
 type Ad interface {

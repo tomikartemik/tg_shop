@@ -32,6 +32,7 @@ type User interface {
 	ChangeRating(userID int, newRating float64) error
 	GetUserByUsername(username string) (model.User, error)
 	SearchUsers(query string) ([]model.User, error)
+	Purchase(request model.PurchaseRequest) error
 }
 
 type Ad interface {

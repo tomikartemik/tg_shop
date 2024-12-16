@@ -254,3 +254,47 @@ func (s *UserService) GetUserByUsername(username string) (model.User, error) {
 func (s *UserService) SearchUsers(query string) ([]model.User, error) {
 	return s.repo.SearchUsers(query)
 }
+
+func (s *UserService) Purchase(request model.PurchaseRequest) error {
+	userID, adID := request.UserID, request.AdID
+
+	buyer, err := s.repo.GetUserById(userID)
+	if err != nil {
+		return err
+	}
+
+	ad, err := s.repoAd.GetAdById(adID)
+	if err != nil {
+		return err
+	}
+
+	seller, err := s.repo.GetUserById(ad.SellerID)
+	if err != nil {
+		return err
+	}
+
+	if buyer.Balance < ad.Price {
+		return errors.New("броуку не хватает денег")
+	}
+
+	if ad.Stock <= 0 {
+		return errors.New("наличие: закончилось")
+	}
+
+	if err = s.repo.AddPurchase(userID, adID); err != nil {
+		return err
+	}
+
+	sellerNewBalance := seller.Balance + ad.Price
+	buyerNewBalance := buyer.Balance - ad.Price
+
+	if err = s.repo.ChangeBalance(seller.TelegramID, sellerNewBalance); err != nil {
+		return err
+	}
+
+	if err = s.repo.ChangeBalance(userID, buyerNewBalance); err != nil {
+		return err
+	}
+
+	return nil
+}

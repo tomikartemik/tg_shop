@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
+	"tg_shop/internal/model"
 )
 
 func (h *Handler) GetUserByID(c *gin.Context) {
@@ -14,6 +15,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 	}
 
 	user, err := h.services.GetUserById(userID)
+
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 	}
@@ -22,9 +24,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 
 func (h *Handler) GetUserAsSellerByID(c *gin.Context) {
 	telegramIDStr := c.Query("tg_id")
-
 	userAsSeller, err := h.services.GetUserAsSellerByID(telegramIDStr)
-
 	if err != nil {
 		newErrorResponse(c, http.StatusBadRequest, "Invalid user ID: "+err.Error())
 	}
@@ -35,8 +35,23 @@ func (h *Handler) GetUserAsSellerByID(c *gin.Context) {
 func (h *Handler) SearchUsers(c *gin.Context) {
 	query := c.Query("username")
 	users, err := h.services.SearchUsers(query)
+
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 	}
 	c.JSON(http.StatusOK, users)
+}
+
+func (h *Handler) Purchase(c *gin.Context) {
+	var purchaseRequest model.PurchaseRequest
+	if err := c.ShouldBindJSON(&purchaseRequest); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	err := h.services.Purchase(purchaseRequest)
+	if err != nil {
+		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	c.JSON(http.StatusOK, nil)
 }

@@ -19,17 +19,21 @@ func (repo *UserRepository) CreateUser(user model.User) (model.User, error) {
 	if err != nil {
 		return model.User{}, err
 	}
+
 	return user, nil
 }
 
 func (repo *UserRepository) GetUserById(id int) (model.User, error) {
 	var user model.User
+
 	err := repo.db.Where("telegram_id = ?", id).Preload("Ads").Preload("Purchased").First(&user).Error
+
 	return user, err
 }
 
 func (repo *UserRepository) UpdateUser(user model.User) (model.User, error) {
 	var existingUser model.User
+
 	err := repo.db.Where("telegram_id = ?", user.TelegramID).First(&existingUser).Error
 	if err != nil {
 		return model.User{}, err
@@ -45,24 +49,60 @@ func (repo *UserRepository) UpdateUser(user model.User) (model.User, error) {
 
 func (repo *UserRepository) GetAllUsers() ([]model.User, error) {
 	var users []model.User
+
 	err := repo.db.Find(&users).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch users: %w", err)
 	}
+
 	return users, nil
 }
 
 func (repo *UserRepository) GetUserByUsername(username string) (model.User, error) {
 	var user model.User
+
 	err := repo.db.Where("username = ?", username).First(&user).Error
+
 	return user, err
 }
 
 func (repo *UserRepository) SearchUsers(query string) ([]model.User, error) {
 	var users []model.User
+
 	err := repo.db.Where("username ILIKE ?", query+"%").Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
+
 	return users, nil
+}
+
+func (repo *UserRepository) AddPurchase(userID, adID int) error {
+	var user model.User
+
+	if err := repo.db.First(&user, userID).Error; err != nil {
+		return err
+	}
+
+	if err := repo.db.Model(&user).Association("Purchased").Append(adID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (repo *UserRepository) ChangeBalance(userID int, newBalance float64) error {
+	var user model.User
+
+	if err := repo.db.First(&user, userID).Error; err != nil {
+		return err
+	}
+
+	user.Balance = newBalance
+
+	if err := repo.db.Save(&user).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
