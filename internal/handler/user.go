@@ -48,12 +48,14 @@ func (h *Handler) Purchase(c *gin.Context) {
 	var purchaseRequest model.PurchaseRequest
 	if err := c.ShouldBindJSON(&purchaseRequest); err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	err := h.services.Purchase(purchaseRequest)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
 	}
 
-	c.JSON(http.StatusOK, nil)
+	c.JSON(http.StatusOK, gin.H{"message": "Покупка успешно совершена"})
 }
