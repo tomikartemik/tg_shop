@@ -10,6 +10,7 @@ func (h *Handler) GetCategoryList(c *gin.Context) {
 
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	c.JSON(http.StatusOK, categories)

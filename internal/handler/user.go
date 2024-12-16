@@ -13,12 +13,14 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
 		newErrorResponse(c, http.StatusBadRequest, "Invalid user ID: "+err.Error())
+		return
 	}
 
 	user, err := h.services.GetUserById(userID)
 
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
 	}
 	c.JSON(http.StatusOK, user)
 }
@@ -28,6 +30,7 @@ func (h *Handler) GetUserAsSellerByID(c *gin.Context) {
 	userAsSeller, err := h.services.GetUserAsSellerByID(telegramIDStr)
 	if err != nil {
 		newErrorResponse(c, http.StatusBadRequest, "Invalid user ID: "+err.Error())
+		return
 	}
 
 	c.JSON(http.StatusOK, userAsSeller)
@@ -39,6 +42,7 @@ func (h *Handler) SearchUsers(c *gin.Context) {
 
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
 	}
 	c.JSON(http.StatusOK, users)
 }

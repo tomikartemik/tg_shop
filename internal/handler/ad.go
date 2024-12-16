@@ -12,6 +12,7 @@ func (h *Handler) GetAdList(c *gin.Context) {
 
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	c.JSON(http.StatusOK, ads)
@@ -25,6 +26,7 @@ func (h *Handler) GetAdById(c *gin.Context) {
 
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	c.JSON(http.StatusOK, ad)
