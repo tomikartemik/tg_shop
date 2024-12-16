@@ -356,7 +356,6 @@ func (h *Handler) sendMainMenu(bot *tgbotapi.BotAPI, chatID int64) {
 func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update, state, messageText string) {
 	telegramID := update.Message.From.ID
 
-	// Обработка выхода из создания объявления
 	if messageText == "❌ Exit" {
 		delete(h.tempAdData, telegramID)
 		delete(h.userStates, telegramID)
