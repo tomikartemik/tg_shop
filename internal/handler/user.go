@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -43,6 +44,7 @@ func (h *Handler) SearchUsers(c *gin.Context) {
 }
 
 func (h *Handler) Purchase(c *gin.Context) {
+	fmt.Println("/user/purchase")
 	var purchaseRequest model.PurchaseRequest
 	if err := c.ShouldBindJSON(&purchaseRequest); err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
