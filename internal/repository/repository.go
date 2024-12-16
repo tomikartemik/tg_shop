@@ -39,6 +39,7 @@ type Ad interface {
 	GetAdById(id int) (model.Ad, error)
 	UpdateAd(ad model.Ad) (model.Ad, error)
 	DeleteAd(adID int) error // Добавляем метод удаления
+	ChangeStock(adID, newStock int) error
 }
 
 type Category interface {

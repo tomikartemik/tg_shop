@@ -79,12 +79,17 @@ func (repo *UserRepository) SearchUsers(query string) ([]model.User, error) {
 
 func (repo *UserRepository) AddPurchase(userID, adID int) error {
 	var user model.User
+	var ad model.Ad
 
 	if err := repo.db.First(&user, userID).Error; err != nil {
 		return err
 	}
 
-	if err := repo.db.Model(&user).Association("Purchased").Append(adID); err != nil {
+	if err := repo.db.Model(&model.Ad{}).First(&ad, adID).Error; err != nil {
+		return err
+	}
+
+	if err := repo.db.Model(&user).Association("Purchased").Append(&ad); err != nil {
 		return err
 	}
 

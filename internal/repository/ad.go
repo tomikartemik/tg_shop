@@ -88,3 +88,17 @@ func (repo *AdRepository) DeleteAd(adID int) error {
 
 	return nil
 }
+
+func (repo *AdRepository) ChangeStock(adID, newStock int) error {
+	ad, err := repo.GetAdById(adID)
+	if err != nil {
+		return err
+	}
+
+	ad.Stock = newStock
+	if err = repo.db.Save(&ad).Error; err != nil {
+		return err
+	}
+
+	return nil
+}

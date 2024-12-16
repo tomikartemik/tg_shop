@@ -296,5 +296,9 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 		return err
 	}
 
+	if err = s.repoAd.ChangeStock(adID, ad.Stock-1); err != nil {
+		return err
+	}
+	
 	return nil
 }
