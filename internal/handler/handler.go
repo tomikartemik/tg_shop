@@ -57,6 +57,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		user.GET("", h.GetUserByID)
 		user.GET("/seller", h.GetUserAsSellerByID)
 		user.GET("/search", h.SearchUsers)
+		user.POST("/purchase", h.Purchase)
 	}
 	////////////////////////////////////////////////////////////
 
