@@ -225,9 +225,9 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		delete(h.userStates, update.Message.From.ID)
 		h.sendMainMenu(bot, update.Message.Chat.ID)
+	} else {
+		h.HandleKeyboardButton(bot, update, messageText)
 	}
-
-	h.HandleKeyboardButton(bot, update, messageText)
 }
 
 func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Update, messageText string) {
@@ -308,7 +308,14 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	case "💎 Premium":
 		context.TODO()
 	case "❗️Important":
-		context.TODO()
+		url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-14"
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click the button below to view important information.")
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
+			),
+		)
+		bot.Send(msg)
 	case "🆘 Support":
 		context.TODO()
 	case "📄 Our channels":
