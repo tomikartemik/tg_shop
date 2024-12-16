@@ -412,7 +412,30 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		ad.Stock = stock
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_category"
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the category ID for your ad:")
+		categories, err := h.services.Category.GetCategoryList()
+		if err != nil {
+			log.Printf("Error fetching categories: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load categories. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		if len(categories) == 0 {
+			log.Println("No categories found.")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "No categories available at the moment.")
+			bot.Send(msg)
+			return
+		}
+
+		var categoryList strings.Builder
+		categoryList.WriteString("📋 *Available Categories:*\n")
+		for _, category := range categories {
+			categoryList.WriteString(fmt.Sprintf("%d - %s\n", category.ID, category.Name))
+		}
+		categoryList.WriteString("\nPlease enter the ID of the category you want to choose:")
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, categoryList.String())
+		msg.ParseMode = "Markdown"
 		msg.ReplyMarkup = getExitKeyboard()
 		bot.Send(msg)
 
