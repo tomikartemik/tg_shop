@@ -658,7 +658,7 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 		ordersMessage := "🛒 *Your Orders:*\n"
 		for _, ad := range user.Purchased {
 			ordersMessage += fmt.Sprintf(
-				"\n*Title:* %d\n*Price:* %s\n*Description:* %s\n\n",
+				"\n*Title:* %s\n*Price:* %.2f\n*Description:* %s\n\n",
 				ad.Title, ad.Price, ad.Description,
 			)
 		}
