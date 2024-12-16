@@ -101,6 +101,7 @@ func (s *UserService) GetUserAsSellerByID(telegramIDStr string) (model.UserAsSel
 	userAsSeller = model.UserAsSeller{
 		TelegramID:   user.TelegramID,
 		Username:     user.Username,
+		PhotoURL:     user.PhotoURL,
 		Ads:          adsShortInfo,
 		Rating:       user.Rating,
 		ReviewNumber: user.ReviewNumber,
@@ -299,6 +300,6 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 	if err = s.repoAd.ChangeStock(adID, ad.Stock-1); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
