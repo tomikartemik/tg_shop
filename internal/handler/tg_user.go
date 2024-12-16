@@ -161,6 +161,70 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		delete(h.userStates, update.Message.From.ID)
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 
+	} else if h.userStates[telegramID] == "changing_photo" {
+		if update.Message.Photo == nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo.")
+			bot.Send(msg)
+			return
+		}
+
+		photo := update.Message.Photo[len(update.Message.Photo)-1]
+
+		fileConfig := tgbotapi.FileConfig{FileID: photo.FileID}
+		file, err := bot.GetFile(fileConfig)
+		if err != nil {
+			log.Printf("Failed to get file from Telegram: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			bot.Send(msg)
+			return
+		}
+
+		url := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", bot.Token, file.FilePath)
+
+		response, err := http.Get(url)
+		if err != nil {
+			log.Printf("Failed to download file: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			bot.Send(msg)
+			return
+		}
+		defer response.Body.Close()
+
+		fileData, err := io.ReadAll(response.Body)
+		if err != nil {
+			log.Printf("Failed to read file data: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			bot.Send(msg)
+			return
+		}
+
+		fileName := fmt.Sprintf("%d_avatar.jpg", update.Message.From.ID)
+		filePath, err := utils.SaveFile(fileData, fileName, "./uploads")
+		if err != nil {
+			log.Printf("Error saving photo: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to save the photo. Try again.")
+			bot.Send(msg)
+			return
+		}
+
+		updatedUser := model.User{
+			TelegramID: int(update.Message.From.ID),
+			PhotoURL:   filePath,
+		}
+
+		_, err = h.services.CreateOrUpdateUser(updatedUser)
+		if err != nil {
+			log.Printf("Error updating user photo: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to update your profile picture. Please try again.")
+			bot.Send(msg)
+			return
+		}
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your profile picture has been updated successfully!")
+		bot.Send(msg)
+
+		delete(h.userStates, update.Message.From.ID)
+		h.sendMainMenu(bot, update.Message.Chat.ID)
 	}
 
 	h.HandleKeyboardButton(bot, update, messageText)
@@ -211,6 +275,10 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonData("✏️ Change Name", "change_name"),
 				tgbotapi.NewInlineKeyboardButtonData("📄 My Ads", "my_ads"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("🖼️ Change Photo", "change_photo"),
+				tgbotapi.NewInlineKeyboardButtonData("📦My orders", "my_orders"),
 			),
 		)
 
@@ -281,11 +349,24 @@ func (h *Handler) sendMainMenu(bot *tgbotapi.BotAPI, chatID int64) {
 func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update, state, messageText string) {
 	telegramID := update.Message.From.ID
 
+	// Обработка выхода из создания объявления
+	if messageText == "❌ Exit" {
+		delete(h.tempAdData, telegramID)
+		delete(h.userStates, telegramID)
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You have exited the ad creation process.")
+		bot.Send(msg)
+
+		h.sendMainMenu(bot, update.Message.Chat.ID)
+		return
+	}
+
 	switch state {
 	case "creating_ad_title":
 		h.tempAdData[telegramID] = model.Ad{Title: messageText}
 		h.userStates[telegramID] = "creating_ad_description"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the description for your ad:")
+		msg.ReplyMarkup = getExitKeyboard()
 		bot.Send(msg)
 
 	case "creating_ad_description":
@@ -294,12 +375,14 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_price"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the price for your ad:")
+		msg.ReplyMarkup = getExitKeyboard()
 		bot.Send(msg)
 
 	case "creating_ad_price":
 		price, err := strconv.ParseFloat(messageText, 64)
 		if err != nil {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid price. Please enter a numeric value:")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -308,12 +391,14 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_stock"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the stock quantity for your ad:")
+		msg.ReplyMarkup = getExitKeyboard()
 		bot.Send(msg)
 
 	case "creating_ad_stock":
 		stock, err := strconv.Atoi(messageText)
 		if err != nil {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid stock. Please enter a numeric value:")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -322,12 +407,14 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_category"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the category ID for your ad:")
+		msg.ReplyMarkup = getExitKeyboard()
 		bot.Send(msg)
 
 	case "creating_ad_category":
 		categoryID, err := strconv.Atoi(messageText)
 		if err != nil {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid category ID. Please enter a numeric value:")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -336,11 +423,13 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_photo"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a photo for your ad:")
+		msg.ReplyMarkup = getExitKeyboard()
 		bot.Send(msg)
 
 	case "creating_ad_photo":
 		if update.Message.Photo == nil {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo.")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -352,6 +441,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		if err != nil {
 			log.Printf("Failed to get file from Telegram: %v", err)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -361,6 +451,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		if err != nil {
 			log.Printf("Failed to download file: %v", err)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -370,6 +461,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		if err != nil {
 			log.Printf("Failed to read file data: %v", err)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -378,6 +470,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		if err != nil {
 			log.Printf("Error saving photo: %v", err)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to save the photo. Try again.")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -388,12 +481,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 
 		h.userStates[update.Message.From.ID] = "creating_ad_files"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload any additional files for your ad or click 'Skip'.")
-		skipKeyboard := tgbotapi.NewReplyKeyboard(
-			tgbotapi.NewKeyboardButtonRow(
-				tgbotapi.NewKeyboardButton("✅ Skip"),
-			),
-		)
-		msg.ReplyMarkup = skipKeyboard
+		msg.ReplyMarkup = getAdCreationButtons("creating_ad_files")
 		bot.Send(msg)
 
 	case "creating_ad_files":
@@ -406,6 +494,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 			filePath, err := utils.SaveFile([]byte(file.FileID), file.FileName, "./uploads")
 			if err != nil {
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to upload file. Please try again.")
+				msg.ReplyMarkup = getExitKeyboard()
 				bot.Send(msg)
 				return
 			}
@@ -413,6 +502,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 			h.userStates[telegramID] = "creating_ad_finish"
 		} else {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid file or press 'Skip'.")
+			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
@@ -521,8 +611,46 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 		msg.ParseMode = "Markdown"
 		bot.Send(msg)
 
+	case "my_orders":
+		user, err := h.services.GetUserById(int(callbackQuery.From.ID))
+		if err != nil {
+			log.Printf("Error fetching user orders: %v", err)
+			msg := tgbotapi.NewMessage(chatID, "Error loading your orders. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		if len(user.Purchased) == 0 {
+			msg := tgbotapi.NewMessage(chatID, "You have no purchases.")
+			bot.Send(msg)
+			return
+		}
+
+		ordersMessage := "🛒 *Your Orders:*\n"
+		for _, ad := range user.Purchased {
+			ordersMessage += fmt.Sprintf(
+				"\n*Title:* %d\n*Price:* %s\n*Description:* %s\n\n",
+				ad.Title, ad.Price, ad.Description,
+			)
+		}
+
+		msg := tgbotapi.NewMessage(chatID, ordersMessage)
+		msg.ParseMode = "Markdown"
+		bot.Send(msg)
+	case "change_photo":
+		msg := tgbotapi.NewMessage(chatID, "Please upload your new profile picture:")
+		bot.Send(msg)
+		h.userStates[callbackQuery.From.ID] = "changing_photo"
 	default:
 		msg := tgbotapi.NewMessage(chatID, "Unknown action.")
 		bot.Send(msg)
 	}
+}
+
+func getExitKeyboard() tgbotapi.ReplyKeyboardMarkup {
+	return tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("❌ Exit"),
+		),
+	)
 }
