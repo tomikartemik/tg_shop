@@ -274,12 +274,16 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 		return err
 	}
 
+	if buyer.TelegramID == seller.TelegramID {
+		return fmt.Errorf("You really want to buy your own merchandise?")
+	}
+
 	if buyer.Balance < ad.Price {
-		return errors.New("броуку не хватает денег")
+		return errors.New("The financial situation doesn't match!")
 	}
 
 	if ad.Stock <= 0 {
-		return errors.New("наличие: закончилось")
+		return errors.New("Out of stock!")
 	}
 
 	if err = s.repo.AddPurchase(userID, adID); err != nil {
