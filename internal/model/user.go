@@ -25,3 +25,14 @@ type UserAsSeller struct {
 	Rating       float64       `json:"rating"`
 	ReviewNumber int           `json:"review_number"`
 }
+
+type UserInfo struct {
+	TelegramID   int           `json:"telegram_id"`
+	Username     string        `json:"username"`
+	PhotoURL     string        `json:"photo_url"`
+	Balance      float64       `json:"balance"`
+	Ads          []AdShortInfo `json:"ads"`
+	Purchased    []AdShortInfo `json:"purchased"`
+	Rating       float64       `json:"rating"`
+	ReviewNumber int           `json:"review_number"`
+}

@@ -21,7 +21,7 @@ func NewService(repos *repository.Repository) *Service {
 
 type User interface {
 	CreateUser(id int, user model.User) (model.User, error)
-	GetUserById(id int) (model.User, error)
+	GetUserById(id int) (model.UserInfo, error)
 	CreateOrUpdateUser(user model.User) (model.User, error)
 	GetUserAsSellerByID(telegramIDStr string) (model.UserAsSeller, error)
 	IsAdmin(userID int) (bool, error)
@@ -31,7 +31,7 @@ type User interface {
 	ChangeBalance(userID int, newBalance float64) error
 	ChangeRating(userID int, newRating float64) error
 	GetUserByUsername(username string) (model.User, error)
-	SearchUsers(query string) ([]model.User, error)
+	SearchUsers(query string) ([]model.UserInfo, error)
 	Purchase(request model.PurchaseRequest) error
 }
 

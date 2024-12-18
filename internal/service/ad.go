@@ -96,6 +96,41 @@ func (s *AdService) GetAdByID(idStr string) (model.AdInfo, error) {
 	return adInfo, nil
 }
 
+func (s *AdService) GetAdsByUserID(userID int) ([]model.AdShortInfo, error) {
+	ads, err := s.repo.GetAdsByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.convertAdsToAdsShortInfo(ads)
+}
+
+func (s *AdService) EditAd(adID int, updatedAd model.Ad) error {
+	ad, err := s.repo.GetAdById(adID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch ad: %w", err)
+	}
+
+	ad.Title = updatedAd.Title
+	ad.Description = updatedAd.Description
+	ad.Price = updatedAd.Price
+	ad.Stock = updatedAd.Stock
+	ad.CategoryID = updatedAd.CategoryID
+	ad.PhotoURL = updatedAd.PhotoURL
+	ad.Files = updatedAd.Files
+
+	_, updateErr := s.repo.UpdateAd(ad)
+	if updateErr != nil {
+		return fmt.Errorf("failed to edit ad: %w", updateErr)
+	}
+
+	return nil
+}
+
+func (s *AdService) DeleteAd(adID int) error {
+	return s.repo.DeleteAd(adID)
+}
+
 func (s *AdService) convertAdToAdInfo(ad model.Ad) (model.AdInfo, error) {
 	adInfo := model.AdInfo{}
 
@@ -162,39 +197,4 @@ func (s *AdService) convertAdsToAdsShortInfo(ads []model.Ad) ([]model.AdShortInf
 	}
 
 	return adsShortInfo, nil
-}
-
-func (s *AdService) GetAdsByUserID(userID int) ([]model.AdShortInfo, error) {
-	ads, err := s.repo.GetAdsByUserID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.convertAdsToAdsShortInfo(ads)
-}
-
-func (s *AdService) EditAd(adID int, updatedAd model.Ad) error {
-	ad, err := s.repo.GetAdById(adID)
-	if err != nil {
-		return fmt.Errorf("failed to fetch ad: %w", err)
-	}
-
-	ad.Title = updatedAd.Title
-	ad.Description = updatedAd.Description
-	ad.Price = updatedAd.Price
-	ad.Stock = updatedAd.Stock
-	ad.CategoryID = updatedAd.CategoryID
-	ad.PhotoURL = updatedAd.PhotoURL
-	ad.Files = updatedAd.Files
-
-	_, updateErr := s.repo.UpdateAd(ad)
-	if updateErr != nil {
-		return fmt.Errorf("failed to edit ad: %w", updateErr)
-	}
-
-	return nil
-}
-
-func (s *AdService) DeleteAd(adID int) error {
-	return s.repo.DeleteAd(adID)
 }

@@ -35,8 +35,13 @@ func (s *UserService) CreateUser(id int, user model.User) (model.User, error) {
 	return newUser, nil
 }
 
-func (s *UserService) GetUserById(id int) (model.User, error) {
-	return s.repo.GetUserById(id)
+func (s *UserService) GetUserById(id int) (model.UserInfo, error) {
+	userInfo, err := s.convertUserToUserInfo(id)
+	if err != nil {
+		return model.UserInfo{}, err
+	}
+
+	return userInfo, nil
 }
 
 func (s *UserService) CreateOrUpdateUser(user model.User) (model.User, error) {
@@ -108,40 +113,6 @@ func (s *UserService) GetUserAsSellerByID(telegramIDStr string) (model.UserAsSel
 	}
 
 	return userAsSeller, nil
-}
-
-func (s *UserService) convertAdsToAdsShortInfo(ads []model.Ad) ([]model.AdShortInfo, error) {
-	adsShortInfo := []model.AdShortInfo{}
-
-	for _, ad := range ads {
-		seller, err := s.repo.GetUserById(ad.SellerID)
-
-		if err != nil {
-			return adsShortInfo, err
-		}
-
-		category, err := s.repoCategory.GetCategoryById(ad.CategoryID)
-
-		if err != nil {
-			return adsShortInfo, err
-		}
-
-		adsShortInfo = append(adsShortInfo, model.AdShortInfo{
-			ID:                 ad.ID,
-			Title:              ad.Title,
-			Price:              ad.Price,
-			PhotoURL:           ad.PhotoURL,
-			CategoryID:         category.ID,
-			CategoryName:       category.Name,
-			SellerID:           seller.TelegramID,
-			SellerName:         seller.Username,
-			SellerRating:       seller.Rating,
-			SellerReviewNumber: seller.ReviewNumber,
-			Stock:              ad.Stock,
-		})
-	}
-
-	return adsShortInfo, nil
 }
 
 func (s *UserService) IsAdmin(userID int) (bool, error) {
@@ -252,8 +223,22 @@ func (s *UserService) GetUserByUsername(username string) (model.User, error) {
 	return s.repo.GetUserByUsername(username)
 }
 
-func (s *UserService) SearchUsers(query string) ([]model.User, error) {
-	return s.repo.SearchUsers(query)
+func (s *UserService) SearchUsers(query string) ([]model.UserInfo, error) {
+	var usersInfo []model.UserInfo
+	users, err := s.repo.SearchUsers(query)
+	if err != nil {
+		return usersInfo, err
+	}
+
+	for _, user := range users {
+		userInfo, err := s.convertUserToUserInfo(user.TelegramID)
+		if err != nil {
+			continue
+		}
+		usersInfo = append(usersInfo, userInfo)
+	}
+
+	return usersInfo, nil
 }
 
 func (s *UserService) Purchase(request model.PurchaseRequest) error {
@@ -306,4 +291,69 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 	}
 
 	return nil
+}
+
+func (s *UserService) convertAdsToAdsShortInfo(ads []model.Ad) ([]model.AdShortInfo, error) {
+	adsShortInfo := []model.AdShortInfo{}
+
+	for _, ad := range ads {
+		seller, err := s.repo.GetUserById(ad.SellerID)
+
+		if err != nil {
+			return adsShortInfo, err
+		}
+
+		category, err := s.repoCategory.GetCategoryById(ad.CategoryID)
+
+		if err != nil {
+			return adsShortInfo, err
+		}
+
+		adsShortInfo = append(adsShortInfo, model.AdShortInfo{
+			ID:                 ad.ID,
+			Title:              ad.Title,
+			Price:              ad.Price,
+			PhotoURL:           ad.PhotoURL,
+			CategoryID:         category.ID,
+			CategoryName:       category.Name,
+			SellerID:           seller.TelegramID,
+			SellerName:         seller.Username,
+			SellerRating:       seller.Rating,
+			SellerReviewNumber: seller.ReviewNumber,
+			Stock:              ad.Stock,
+		})
+	}
+
+	return adsShortInfo, nil
+}
+
+func (s *UserService) convertUserToUserInfo(telegramID int) (model.UserInfo, error) {
+	var userInfo model.UserInfo
+	user, err := s.repo.GetUserById(telegramID)
+	if err != nil {
+		return userInfo, err
+	}
+
+	ads, err := s.convertAdsToAdsShortInfo(user.Ads)
+	if err != nil {
+		return userInfo, err
+	}
+
+	purchased, err := s.convertAdsToAdsShortInfo(user.Purchased)
+	if err != nil {
+		return userInfo, err
+	}
+
+	userInfo = model.UserInfo{
+		TelegramID:   user.TelegramID,
+		Username:     user.Username,
+		PhotoURL:     user.PhotoURL,
+		Balance:      user.Balance,
+		Ads:          ads,
+		Purchased:    purchased,
+		Rating:       user.Rating,
+		ReviewNumber: user.ReviewNumber,
+	}
+
+	return userInfo, nil
 }
