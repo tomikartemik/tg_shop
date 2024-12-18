@@ -16,7 +16,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	user, err := h.services.GetUserById(userID)
+	user, err := h.services.GetUserInfoById(userID)
 
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())

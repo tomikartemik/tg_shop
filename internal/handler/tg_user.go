@@ -16,7 +16,7 @@ import (
 func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
 
-	existingUser, err := h.services.GetUserById(int(telegramID))
+	existingUser, err := h.services.GetUserInfoById(int(telegramID))
 	if err == nil {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
 			"Welcome back, %s!",
@@ -34,9 +34,18 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		return
 	}
 
+	url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-14"
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click the button below to view important information.")
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
+		),
+	)
+	bot.Send(msg)
+
 	h.userStates[telegramID] = "username"
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your name:")
+	msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your name:")
 	bot.Send(msg)
 }
 

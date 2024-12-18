@@ -35,13 +35,21 @@ func (s *UserService) CreateUser(id int, user model.User) (model.User, error) {
 	return newUser, nil
 }
 
-func (s *UserService) GetUserById(id int) (model.UserInfo, error) {
+func (s *UserService) GetUserInfoById(id int) (model.UserInfo, error) {
 	userInfo, err := s.convertUserToUserInfo(id)
 	if err != nil {
 		return model.UserInfo{}, err
 	}
 
 	return userInfo, nil
+}
+
+func (s *UserService) GetUserById(id int) (model.User, error) {
+	user, err := s.repo.GetUserById(id)
+	if err != nil {
+		return model.User{}, err
+	}
+	return user, nil
 }
 
 func (s *UserService) CreateOrUpdateUser(user model.User) (model.User, error) {
