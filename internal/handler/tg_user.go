@@ -34,7 +34,7 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		return
 	}
 
-	url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-14"
+	url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law.")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -317,7 +317,7 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	case "💎 Premium":
 		context.TODO()
 	case "❗️Important":
-		url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-14"
+		url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click the button below to view important information.")
 		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
