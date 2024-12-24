@@ -269,11 +269,12 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 
 		profileMessage := fmt.Sprintf(
 			"👤 *Your Profile:*\n"+
+				"Id: %d\n"+
 				"Name: %s\n"+
-				"Balance: %.2f\n"+
+				"Balance: %.2f$\n"+
 				"Rating: %.2f\n"+
 				"Premium: %s",
-			user.Username, user.Balance, user.Rating, premiumStatus,
+			user.TelegramID, user.Username, user.Balance, user.Rating, premiumStatus,
 		)
 
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -328,7 +329,18 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	case "🆘 Support":
 		context.TODO()
 	case "📄 Our channels":
-		context.TODO()
+		messageText := "Would be delighted if you check out our other projects listed below!\n\n" +
+			"❗️All titles are clickable!\n\n" +
+			"🔺 [HELL REFUND MAIN](https://t.me/+VtUPiZtDuX9hYTQy)\n\n" +
+			"🔺 [HELL REFUND BACKUP](https://t.me/+ZOU4LSpBvwc5ZmRi)\n\n" +
+			"🔺 [HELL REFUND CHAT](https://t.me/+3xhos0cIhTNhYmZi)\n\n" +
+			"🔺 [HELL BOXING](https://t.me/+X9-Ql8LQVDYyYmI6)\n\n" +
+			"🔺 [HELL CHECKIP BOT](https://t.me/hellcheckip_bot)"
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, messageText)
+		msg.ParseMode = "MarkdownV2"
+
+		bot.Send(msg)
 	default:
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Command not recognized.")
 		bot.Send(msg)
@@ -640,7 +652,7 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 		adsMessage := "📄 *Your Ads:*\n"
 		for _, ad := range ads {
 			adsMessage += fmt.Sprintf(
-				"ID: %d\nTitle: %s\nPrice: %.2f\nStock: %d\n\n",
+				"ID: %d\nTitle: %s\nPrice: %.2f$\nStock: %d\n\n",
 				ad.ID, ad.Title, ad.Price, ad.Stock,
 			)
 		}

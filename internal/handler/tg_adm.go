@@ -26,9 +26,10 @@ func (h *AdminHandler) sendAdminMainMenu(bot *tgbotapi.BotAPI, chatID int64) {
 	menuKeyboard := tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("🔍 Work with User"),
-			tgbotapi.NewKeyboardButton("📢 Broadcast Message"),
+			tgbotapi.NewKeyboardButton("🔍 Work with User by nickname"),
 		),
 		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("📢 Broadcast Message"),
 			tgbotapi.NewKeyboardButton("🔎 Find User by Username"),
 		),
 	)
@@ -50,6 +51,14 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 		switch {
 		case state == "searching_user":
 			h.handleUserSearch(bot, chatID, messageText)
+		case state == "searching_user_nickname":
+			user, err := h.services.User.GetUserByUsername(messageText)
+			if err != nil {
+				msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("User with username '%s' not found.", messageText))
+				bot.Send(msg)
+				return
+			}
+			h.handleUserSearch(bot, chatID, strconv.Itoa(user.TelegramID))
 		case state == "broadcasting_message":
 			h.handleBroadcast(bot, chatID, messageText)
 		case state == "searching_user_by_username":
@@ -96,6 +105,11 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 	case "🔍 Work with User":
 		h.userStates[chatID] = "searching_user"
 		msg := tgbotapi.NewMessage(chatID, "Enter the user ID to search:")
+		bot.Send(msg)
+
+	case "🔍 Work with User by nickname":
+		h.userStates[chatID] = "searching_user_nickname"
+		msg := tgbotapi.NewMessage(chatID, "Enter the user nickname to search:")
 		bot.Send(msg)
 
 	case "📢 Broadcast Message":
