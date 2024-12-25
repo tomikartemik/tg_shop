@@ -306,7 +306,7 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 
 	if ad.Files != "" {
 
-		absPath, err := filepath.Abs(filepath.Join("..", "..", "cmd", ad.Files))
+		absPath, err := filepath.Abs(filepath.Join("..", "cmd", ad.Files))
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path: %w", err)
 		}
