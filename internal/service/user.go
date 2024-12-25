@@ -304,24 +304,38 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 	msg := tgbotapi.NewMessage(int64(userID), fmt.Sprintf("Your '%s' purchase has been successfully completed", ad.Title))
 	s.bot.Send(msg)
 
-	file, err := os.Open(ad.Files)
-	if err != nil {
-		log.Panic(err)
+	if ad.Files != "" {
+
+		absPath, err := filepath.Abs(filepath.Join("..", "..", "cmd", ad.Files))
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path: %w", err)
+		}
+
+		file, err := os.Open(absPath)
+		if err != nil {
+			return fmt.Errorf("failed to open file: %w", err)
+		}
+		defer file.Close()
+
+		// Получаем расширение файла
+		fileExt := filepath.Ext(ad.Files)
+
+		// Формируем имя файла
+		fileName := fmt.Sprintf("%s%s", ad.Title, fileExt)
+
+		// Создаем объект для отправки файла
+		document := tgbotapi.NewDocument(int64(userID), tgbotapi.FileReader{
+			Name:   fileName,
+			Reader: file,
+		})
+
+		// Отправляем файл через бота
+		if _, err := s.bot.Send(document); err != nil {
+			return fmt.Errorf("failed to send document: %w", err)
+		}
+
 	}
-	defer file.Close()
 
-	fileExt := filepath.Ext(ad.Files)
-
-	fileName := fmt.Sprintf("%s%s", ad.Title, fileExt)
-
-	document := tgbotapi.NewDocument(int64(userID), tgbotapi.FileReader{
-		Name:   fileName,
-		Reader: file,
-	})
-
-	if _, err := s.bot.Send(document); err != nil {
-		log.Panic(err)
-	}
 	return nil
 }
 
