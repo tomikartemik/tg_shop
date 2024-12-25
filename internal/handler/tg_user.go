@@ -541,7 +541,12 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 			h.userStates[telegramID] = "creating_ad_finish"
 		} else if update.Message.Document != nil {
 			file := update.Message.Document
-			filePath, err := utils.SaveFile([]byte(file.FileID), file.FileName, "./uploads")
+			fileData, err := downloadFileFromTg(bot, file.FileID)
+			if err != nil {
+				log.Fatalf("Error downloading file: %v", err)
+			}
+
+			filePath, err := utils.SaveFile(fileData, file.FileName, "./uploads")
 			if err != nil {
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to upload file. Please try again.")
 				msg.ReplyMarkup = getExitKeyboard()
@@ -703,4 +708,26 @@ func getExitKeyboard() tgbotapi.ReplyKeyboardMarkup {
 			tgbotapi.NewKeyboardButton("❌ Exit"),
 		),
 	)
+}
+
+func downloadFileFromTg(bot *tgbotapi.BotAPI, fileID string) ([]byte, error) {
+	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: fileID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file: %v", err)
+	}
+
+	// Скачиваем файл по его URL
+	fileURL := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", bot.Token, file.FilePath)
+	resp, err := http.Get(fileURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download file: %v", err)
+	}
+	defer resp.Body.Close()
+
+	fileData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file data: %v", err)
+	}
+
+	return fileData, nil
 }
