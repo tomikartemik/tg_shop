@@ -33,7 +33,6 @@ func (s *AdService) CreateAd(ad model.Ad) (model.Ad, error) {
 }
 
 func (s *AdService) GetAdList(categoryIDStr string) ([]model.AdShortInfo, error) {
-	fmt.Println(categoryIDStr)
 	adsShortInfo := []model.AdShortInfo{}
 
 	if categoryIDStr == "" {
