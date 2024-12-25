@@ -23,11 +23,14 @@ func main() {
 
 	log.Println("Application started successfully")
 
+	botToken := os.Getenv("BOT_TOKEN")
+
+	bot := internal.InitBot(botToken)
 	repos := repository.NewRepository(db)
-	services := service.NewService(repos)
+	services := service.NewService(repos, bot)
 	handlers := handler.NewHandler(services)
 	adm_handlers := handler.NewAdminHandler(services)
-	go internal.BotProcess(handlers)
+	go internal.BotProcess(handlers, bot)
 	go internal.AdmBotProcess(adm_handlers)
 
 	srv := new(internal.Server)

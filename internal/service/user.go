@@ -17,13 +17,15 @@ type UserService struct {
 	repo         repository.User
 	repoAd       repository.Ad
 	repoCategory repository.Category
+	bot          *tgbotapi.BotAPI
 }
 
-func NewUserService(repo repository.User, repoAd repository.Ad, repoCategory repository.Category) *UserService {
+func NewUserService(repo repository.User, repoAd repository.Ad, repoCategory repository.Category, bot *tgbotapi.BotAPI) *UserService {
 	return &UserService{
 		repo:         repo,
 		repoAd:       repoAd,
 		repoCategory: repoCategory,
+		bot:          bot,
 	}
 }
 
@@ -297,6 +299,24 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 	if err = s.repoAd.ChangeStock(adID, ad.Stock-1); err != nil {
 		return err
 	}
+
+	//file, err := os.Open(ad.Files)
+	//if err != nil {
+	//	log.Panic(err)
+	//}
+	//defer file.Close()
+	//
+	//document := tgbotapi.NewDocumentUpload(int64(userID), tgbotapi.FileReader{
+	//	Name:   "file.pdf",
+	//	Reader: file,
+	//})
+	//
+	//if _, err := s.bot.Send(document); err != nil {
+	//	log.Panic(err)
+	//}
+
+	msg := tgbotapi.NewMessage(int64(userID), "Your profile picture is saved!")
+	s.bot.Send(msg)
 
 	return nil
 }

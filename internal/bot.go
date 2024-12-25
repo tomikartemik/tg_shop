@@ -3,21 +3,24 @@ package internal
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
-	"os"
 	"tg_shop/internal/handler"
 )
 
-func BotProcess(handlers *handler.Handler) {
-	botToken := os.Getenv("BOT_TOKEN")
+func InitBot(botToken string) *tgbotapi.BotAPI {
 	if botToken == "" {
 		log.Fatal("Telegram bot token not provided")
+		return nil
 	}
 
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		log.Fatalf("Failed to create bot: %v", err)
+		return nil
 	}
+	return bot
+}
 
+func BotProcess(handlers *handler.Handler, bot *tgbotapi.BotAPI) {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 

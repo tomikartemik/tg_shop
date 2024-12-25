@@ -1,6 +1,7 @@
 package service
 
 import (
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"tg_shop/internal/model"
 	"tg_shop/internal/repository"
 )
@@ -11,9 +12,9 @@ type Service struct {
 	Category
 }
 
-func NewService(repos *repository.Repository) *Service {
+func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 	return &Service{
-		User:     NewUserService(repos.User, repos.Ad, repos.Category),
+		User:     NewUserService(repos.User, repos.Ad, repos.Category, bot),
 		Ad:       NewAdService(repos.Ad, repos.User, repos.Category),
 		Category: NewCategoryService(repos.Category),
 	}
