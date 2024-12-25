@@ -300,24 +300,23 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 		return err
 	}
 
-	//file, err := os.Open(ad.Files)
-	//if err != nil {
-	//	log.Panic(err)
-	//}
-	//defer file.Close()
-	//
-	//document := tgbotapi.NewDocumentUpload(int64(userID), tgbotapi.FileReader{
-	//	Name:   "file.pdf",
-	//	Reader: file,
-	//})
-	//
-	//if _, err := s.bot.Send(document); err != nil {
-	//	log.Panic(err)
-	//}
-
-	msg := tgbotapi.NewMessage(int64(userID), "Your profile picture is saved!")
+	msg := tgbotapi.NewMessage(int64(userID), fmt.Sprintf("Your '%s' purchase has been successfully completed", ad.Title))
 	s.bot.Send(msg)
 
+	file, err := os.Open(ad.Files)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer file.Close()
+
+	document := tgbotapi.NewDocument(int64(userID), tgbotapi.FileReader{
+		Name:   "file.pdf",
+		Reader: file,
+	})
+
+	if _, err := s.bot.Send(document); err != nil {
+		log.Panic(err)
+	}
 	return nil
 }
 
