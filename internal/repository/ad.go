@@ -24,7 +24,7 @@ func (repo *AdRepository) CreateAd(ad model.Ad) (model.Ad, error) {
 
 func (repo *AdRepository) GetAllAds() ([]model.Ad, error) {
 	var ads []model.Ad
-	err := repo.db.Where("approved = ?", true).Find(&ads).Error
+	err := repo.db.Where("approved = ? AND stock > 0", true).Find(&ads).Error
 	if err != nil {
 		return ads, err
 	}
@@ -33,7 +33,7 @@ func (repo *AdRepository) GetAllAds() ([]model.Ad, error) {
 
 func (repo *AdRepository) GetAdListByCategory(categoryID int) ([]model.Ad, error) {
 	var ads []model.Ad
-	err := repo.db.Where("category_id = ? AND approved = ?", categoryID, true).Find(&ads).Error
+	err := repo.db.Where("category_id = ? AND approved = ? AND stock > 0", categoryID, true).Find(&ads).Error
 	//err := repo.db.Model(model.Ad{}).Find(&ads).Error
 	if err != nil {
 		return []model.Ad{}, err
