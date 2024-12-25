@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"tg_shop/internal/model"
 	"tg_shop/internal/repository"
@@ -309,8 +310,12 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 	}
 	defer file.Close()
 
+	fileExt := filepath.Ext(ad.Files)
+
+	fileName := fmt.Sprintf("%s%s", ad.Title, fileExt)
+
 	document := tgbotapi.NewDocument(int64(userID), tgbotapi.FileReader{
-		Name:   "file.pdf",
+		Name:   fileName,
 		Reader: file,
 	})
 
