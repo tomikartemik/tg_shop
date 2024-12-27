@@ -331,7 +331,8 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		)
 		bot.Send(msg)
 	case "🆘 Support":
-		context.TODO()
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Support account not added.")
+		bot.Send(msg)
 	case "📄 Our channels":
 		messageText := "Would be delighted if you check out our other projects listed below\\!\n\n" +
 			"❗️All titles are clickable\\!\n\n" +
