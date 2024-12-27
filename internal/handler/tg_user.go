@@ -66,9 +66,11 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		_, err := h.services.CreateOrUpdateUser(user)
 		if err != nil {
-			log.Printf("Error creating/updating user: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Error saving your name. Please try again.")
-			bot.Send(msg)
+			log.Printf("Error updating username: %v", err)
+			if strings.Contains(err.Error(), "duplicate") {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Username is already taken.")
+				bot.Send(msg)
+			}
 			return
 		}
 
@@ -94,8 +96,10 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		_, err := h.services.CreateOrUpdateUser(updatedUser)
 		if err != nil {
 			log.Printf("Error updating username: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to update your name. Please try again later.")
-			bot.Send(msg)
+			if strings.Contains(err.Error(), "duplicate") {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Username is already taken.")
+				bot.Send(msg)
+			}
 			return
 		}
 
@@ -329,12 +333,12 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 	case "🆘 Support":
 		context.TODO()
 	case "📄 Our channels":
-		messageText := "Would be delighted if you check out our other projects listed below!\n\n" +
-			"❗️All titles are clickable!\n\n" +
-			"🔺 [HELL REFUND MAIN](https://t.me/+VtUPiZtDuX9hYTQy)\n\n" +
-			"🔺 [HELL REFUND BACKUP](https://t.me/+ZOU4LSpBvwc5ZmRi)\n\n" +
-			"🔺 [HELL REFUND CHAT](https://t.me/+3xhos0cIhTNhYmZi)\n\n" +
-			"🔺 [HELL BOXING](https://t.me/+X9-Ql8LQVDYyYmI6)\n\n" +
+		messageText := "Would be delighted if you check out our other projects listed below\\!\n\n" +
+			"❗️All titles are clickable\\!\n\n" +
+			"🔺 [HELL REFUND MAIN](https://t.me/\\+VtUPiZtDuX9hYTQy)\n\n" +
+			"🔺 [HELL REFUND BACKUP](https://t.me/\\+ZOU4LSpBvwc5ZmRi)\n\n" +
+			"🔺 [HELL REFUND CHAT](https://t.me/\\+3xhos0cIhTNhYmZi)\n\n" +
+			"🔺 [HELL BOXING](https://t.me/\\+X9-Ql8LQVDYyYmI6)\n\n" +
 			"🔺 [HELL CHECKIP BOT](https://t.me/hellcheckip_bot)"
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, messageText)
@@ -716,7 +720,6 @@ func downloadFileFromTg(bot *tgbotapi.BotAPI, fileID string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to get file: %v", err)
 	}
 
-	// Скачиваем файл по его URL
 	fileURL := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", bot.Token, file.FilePath)
 	resp, err := http.Get(fileURL)
 	if err != nil {

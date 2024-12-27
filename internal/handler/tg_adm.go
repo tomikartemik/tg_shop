@@ -26,7 +26,6 @@ func (h *AdminHandler) sendAdminMainMenu(bot *tgbotapi.BotAPI, chatID int64) {
 	menuKeyboard := tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("🔍 Work with User"),
-			tgbotapi.NewKeyboardButton("🔍 Work with User by nickname"),
 		),
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("📢 Broadcast Message"),
@@ -49,8 +48,6 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 
 	if state, exists := h.userStates[chatID]; exists {
 		switch {
-		case state == "searching_user":
-			h.handleUserSearch(bot, chatID, messageText)
 		case state == "searching_user_nickname":
 			user, err := h.services.User.GetUserByUsername(messageText)
 			if err != nil {
@@ -103,11 +100,6 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 
 	switch messageText {
 	case "🔍 Work with User":
-		h.userStates[chatID] = "searching_user"
-		msg := tgbotapi.NewMessage(chatID, "Enter the user ID to search:")
-		bot.Send(msg)
-
-	case "🔍 Work with User by nickname":
 		h.userStates[chatID] = "searching_user_nickname"
 		msg := tgbotapi.NewMessage(chatID, "Enter the user nickname to search:")
 		bot.Send(msg)
