@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"tg_shop/internal"
-	"tg_shop/internal/cron"
 	"tg_shop/internal/handler"
 	"tg_shop/internal/repository"
 	"tg_shop/internal/service"
@@ -32,7 +31,7 @@ func main() {
 	handlers := handler.NewHandler(services)
 	adm_handlers := handler.NewAdminHandler(services)
 
-	cron.InitCron(bot, repos.User)
+	//cron.InitCron(bot, repos.User)
 
 	go internal.BotProcess(handlers, bot)
 	go internal.AdmBotProcess(adm_handlers)
