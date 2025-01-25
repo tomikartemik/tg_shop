@@ -9,6 +9,7 @@ type Repository struct {
 	User
 	Ad
 	Category
+	Invoice
 }
 
 func NewRepository(db *gorm.DB) *Repository {
@@ -16,6 +17,7 @@ func NewRepository(db *gorm.DB) *Repository {
 		User:     NewUserRepository(db),
 		Ad:       NewAdRepository(db),
 		Category: NewCategoryRepository(db),
+		Invoice:  NewInvoiceRepository(db),
 	}
 }
 
@@ -45,4 +47,8 @@ type Ad interface {
 type Category interface {
 	GetCategoryList() ([]model.Category, error)
 	GetCategoryById(categoryID int) (model.Category, error)
+}
+
+type Invoice interface {
+	CreateInvoice(TelegramID int, amount float64) (int, error)
 }

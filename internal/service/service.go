@@ -10,13 +10,15 @@ type Service struct {
 	User
 	Ad
 	Category
+	CryptoCloud
 }
 
 func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 	return &Service{
-		User:     NewUserService(repos.User, repos.Ad, repos.Category, bot),
-		Ad:       NewAdService(repos.Ad, repos.User, repos.Category),
-		Category: NewCategoryService(repos.Category),
+		User:        NewUserService(repos.User, repos.Ad, repos.Category, bot),
+		Ad:          NewAdService(repos.Ad, repos.User, repos.Category),
+		Category:    NewCategoryService(repos.Category),
+		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice),
 	}
 }
 
@@ -49,4 +51,8 @@ type Ad interface {
 
 type Category interface {
 	GetCategoryList() ([]model.Category, error)
+}
+
+type CryptoCloud interface {
+	CreateInvoice(amount float64, telegramID int) (string, error)
 }
