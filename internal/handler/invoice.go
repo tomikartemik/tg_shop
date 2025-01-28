@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"tg_shop/internal/model"
@@ -12,6 +13,7 @@ func (h *Handler) paymentCallback(c *gin.Context) {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	fmt.Println(paymentCallback)
 
 	err := h.services.ChangeStatus(paymentCallback.OrderID, paymentCallback.Status)
 	if err != nil {
