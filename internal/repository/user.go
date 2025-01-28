@@ -97,17 +97,47 @@ func (repo *UserRepository) AddPurchase(userID, adID int) error {
 }
 
 func (repo *UserRepository) ChangeBalance(userID int, newBalance float64) error {
+	tx := repo.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
 	var user model.User
 
-	if err := repo.db.First(&user, userID).Error; err != nil {
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&user, userID).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	user.Balance = newBalance
 
-	if err := repo.db.Save(&user).Error; err != nil {
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return nil
+	return tx.Commit().Error
+}
+
+func (repo *UserRepository) ChangeHoldBalance(userID int, newBalance float64) error {
+	tx := repo.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	var user model.User
+
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&user, userID).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	user.HoldBalance = newBalance
+
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }

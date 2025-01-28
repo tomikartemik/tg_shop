@@ -9,6 +9,7 @@ import (
 	"tg_shop/internal/handler"
 	"tg_shop/internal/repository"
 	"tg_shop/internal/service"
+	"tg_shop/utils"
 )
 
 func main() {
@@ -40,6 +41,8 @@ func main() {
 	if err := srv.Run(os.Getenv("PORT"), handlers.InitRoutes()); err != nil {
 		logrus.Fatalf("error occured while running server %s", err.Error())
 	}
+
+	go utils.StartEarningProcessor(services.Earning)
 
 	if err != nil {
 		log.Panic(err)

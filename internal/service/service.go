@@ -12,6 +12,7 @@ type Service struct {
 	Category
 	CryptoCloud
 	Payout
+	Earning
 }
 
 func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
@@ -21,6 +22,7 @@ func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 		Category:    NewCategoryService(repos.Category),
 		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice),
 		Payout:      NewPayoutService(repos.Payout),
+		Earning:     NewEarningService(repos.Earning, repos.User),
 	}
 }
 
@@ -67,4 +69,8 @@ type Payout interface {
 	ApprovePayoutRequest(requestID int) error
 	RejectPayoutRequest(requestID int) error
 	GetPayoutByID(telegramID int) (model.PayoutRequest, error)
+}
+
+type Earning interface {
+	ProcessEarnings() error
 }

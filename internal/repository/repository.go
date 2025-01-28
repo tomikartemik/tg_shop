@@ -11,6 +11,7 @@ type Repository struct {
 	Category
 	Invoice
 	Payout
+	Earning
 }
 
 func NewRepository(db *gorm.DB) *Repository {
@@ -20,6 +21,7 @@ func NewRepository(db *gorm.DB) *Repository {
 		Category: NewCategoryRepository(db),
 		Invoice:  NewInvoiceRepository(db),
 		Payout:   NewPayoutRequestRepository(db),
+		Earning:  NewEarningRepository(db),
 	}
 }
 
@@ -32,6 +34,7 @@ type User interface {
 	SearchUsers(query string) ([]model.User, error)
 	AddPurchase(userID, adID int) error
 	ChangeBalance(userID int, newBlance float64) error
+	ChangeHoldBalance(userID int, newBalance float64) error
 }
 
 type Ad interface {
@@ -61,4 +64,9 @@ type Payout interface {
 	CreatePayoutRequest(telegramID int, amount float64) (int, error)
 	UpdatePayoutStatus(requestID int, status string) error
 	GetPayoutByID(telegramID int) (model.PayoutRequest, error)
+}
+
+type Earning interface {
+	GetUnprocessedEarnings() ([]model.Earning, error)
+	MarkAsProcessed(earning *model.Earning) error
 }

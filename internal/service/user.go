@@ -286,10 +286,10 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 		return err
 	}
 
-	sellerNewBalance := seller.Balance + ad.Price
+	sellerNewHoldBalance := seller.HoldBalance + ad.Price
 	buyerNewBalance := buyer.Balance - ad.Price
 
-	if err = s.repo.ChangeBalance(seller.TelegramID, sellerNewBalance); err != nil {
+	if err = s.repo.ChangeHoldBalance(seller.TelegramID, sellerNewHoldBalance); err != nil {
 		return err
 	}
 

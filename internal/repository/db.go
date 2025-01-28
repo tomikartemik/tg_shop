@@ -27,6 +27,7 @@ func ConnectDB() (*gorm.DB, error) {
 		&model.Ad{},
 		&model.Invoice{},
 		&model.PayoutRequest{},
+		&model.Earning{},
 	)
 
 	if err != nil {
