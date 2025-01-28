@@ -58,6 +58,8 @@ type Category interface {
 
 type Invoice interface {
 	CreateInvoice(TelegramID int, amount float64) (int, error)
+	ChangeStatus(id int, status string) error
+	GetInvoiceByID(id int) (model.Invoice, error)
 }
 
 type Payout interface {

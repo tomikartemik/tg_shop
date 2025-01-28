@@ -100,3 +100,32 @@ func (s *CryptoCloudService) CreateInvoice(amount float64, telegramID int) (stri
 
 	return response.Result.Link, nil
 }
+
+func (s *CryptoCloudService) ChangeStatus(id int, status string) error {
+	if status != "success" {
+		return s.repoInvoice.ChangeStatus(id, status)
+	}
+
+	invoice, err := s.repoInvoice.GetInvoiceByID(id)
+	if err != nil {
+		return err
+	}
+
+	user, err := s.repoUser.GetUserById(invoice.TelegramID)
+	if err != nil {
+		return err
+	}
+
+	newBalance := user.Balance + invoice.Amount
+
+	err = s.repoUser.ChangeBalance(user.TelegramID, newBalance)
+	if err != nil {
+		return err
+	}
+
+	err = s.repoInvoice.ChangeStatus(id, status)
+	if err != nil {
+		return err
+	}
+	return nil
+}
