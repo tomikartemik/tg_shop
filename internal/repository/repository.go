@@ -10,6 +10,7 @@ type Repository struct {
 	Ad
 	Category
 	Invoice
+	Payout
 }
 
 func NewRepository(db *gorm.DB) *Repository {
@@ -18,6 +19,7 @@ func NewRepository(db *gorm.DB) *Repository {
 		Ad:       NewAdRepository(db),
 		Category: NewCategoryRepository(db),
 		Invoice:  NewInvoiceRepository(db),
+		Payout:   NewPayoutRequestRepository(db),
 	}
 }
 
@@ -42,6 +44,8 @@ type Ad interface {
 	UpdateAd(ad model.Ad) (model.Ad, error)
 	DeleteAd(adID int) error // Добавляем метод удаления
 	ChangeStock(adID, newStock int) error
+	UpdateAdStatus(id int, b bool) error
+	GetAdByIDTg(id int) (model.Ad, error)
 }
 
 type Category interface {
@@ -51,4 +55,10 @@ type Category interface {
 
 type Invoice interface {
 	CreateInvoice(TelegramID int, amount float64) (int, error)
+}
+
+type Payout interface {
+	CreatePayoutRequest(telegramID int, amount float64) (int, error)
+	UpdatePayoutStatus(requestID int, status string) error
+	GetPayoutByID(telegramID int) (model.PayoutRequest, error)
 }

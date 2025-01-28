@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"tg_shop/internal/model"
@@ -109,6 +110,52 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		delete(h.userStates, telegramID)
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 		return
+	} else if h.userStates[telegramID] == "requesting_payout" {
+		amount, err := strconv.ParseFloat(messageText, 64)
+		if err != nil || amount <= 0 {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid amount. Please enter a positive number.")
+			bot.Send(msg)
+			return
+		}
+
+		user, err := h.services.GetUserById(int(telegramID))
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load your profile. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		if amount > user.Balance {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Insufficient balance.")
+			bot.Send(msg)
+			return
+		}
+
+		payoutID, err := h.services.Payout.CreatePayoutRequest(int(telegramID), amount)
+		if err != nil {
+			log.Printf("Error creating payout request: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to create payout request. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		log.Printf("Payout request created with ID: %d", payoutID)
+
+		// Отправка сообщения в группу модерации
+		payoutGroupID, _ := strconv.ParseInt(os.Getenv("GROUP_WITHDRAWAL_ID"), 10, 64)
+		err = h.SendPayoutRequestToModeration(bot, user, amount, payoutGroupID, payoutID)
+		if err != nil {
+			log.Printf("Error sending payout request to moderation group: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to notify moderators. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		delete(h.userStates, telegramID)
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your payout request has been submitted for moderation.")
+		bot.Send(msg)
 	} else if h.userStates[telegramID] == "uploading_avatar" {
 		if update.Message.Photo == nil {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo.")
@@ -238,6 +285,44 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		delete(h.userStates, update.Message.From.ID)
 		h.sendMainMenu(bot, update.Message.Chat.ID)
+	} else if h.userStates[telegramID] == "adding_balance" {
+		// If the user pressed "Cancel"
+		if strings.TrimSpace(messageText) == "❌ Cancel" {
+			delete(h.userStates, telegramID)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Top-up operation has been canceled.")
+			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+			bot.Send(msg)
+			return
+		}
+
+		// Validate the entered amount
+		amount, err := strconv.ParseFloat(messageText, 64)
+		if err != nil || amount <= 0 {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid amount. Please enter a number greater than 0.")
+			bot.Send(msg)
+			return
+		}
+
+		// Create an invoice through CryptoCloud
+		link, err := h.services.CryptoCloud.CreateInvoice(amount, int(telegramID))
+		if err != nil {
+			log.Printf("Error creating invoice: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred while creating the invoice. Please try again.")
+			bot.Send(msg)
+			return
+		}
+
+		// Clear user state
+		delete(h.userStates, telegramID)
+
+		// Send the payment link to the user
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
+			"An invoice for %.2f has been created. Please use the following link to complete the payment: [Pay Now](%s)",
+			amount, link,
+		))
+		msg.ParseMode = "Markdown"
+		msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+		bot.Send(msg)
 	} else {
 		h.HandleKeyboardButton(bot, update, messageText)
 	}
@@ -595,6 +680,12 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 			}
 			delete(h.tempAdData, telegramID)
 			delete(h.userStates, telegramID)
+			moderationGroupID, _ := strconv.ParseInt(os.Getenv("GROUP_MODERATION_ID"), 10, 64)
+			err = h.SendAdToModeration(bot, createdAd, moderationGroupID)
+			if err != nil {
+				log.Printf("Error sending ad to moderation group: %v", err)
+			}
+
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
 				"Your ad '%s' has been submitted for moderation. Ad ID: %d",
 				createdAd.Title, createdAd.ID,
@@ -629,81 +720,198 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 	data := callbackQuery.Data
 	chatID := callbackQuery.Message.Chat.ID
 
-	switch data {
-	case "add_balance":
-		msg := tgbotapi.NewMessage(chatID, "Please enter the amount to add to your balance:")
-		bot.Send(msg)
-		h.userStates[callbackQuery.From.ID] = "adding_balance"
-
-	case "request_payout":
-		msg := tgbotapi.NewMessage(chatID, "Please enter the amount to request for payout:")
-		bot.Send(msg)
-		h.userStates[callbackQuery.From.ID] = "requesting_payout"
-
-	case "change_name":
-		msg := tgbotapi.NewMessage(chatID, "Please enter your new name:")
-		bot.Send(msg)
-		h.userStates[callbackQuery.From.ID] = "changing_name"
-
-	case "my_ads":
-		ads, err := h.services.Ad.GetAdsByUserID(int(callbackQuery.From.ID))
+	if strings.HasPrefix(data, "approve_ad_") {
+		adID, err := strconv.Atoi(strings.TrimPrefix(data, "approve_ad_"))
 		if err != nil {
-			msg := tgbotapi.NewMessage(chatID, "Error loading your ads. Please try again later.")
-			bot.Send(msg)
+			log.Printf("Invalid ad ID in approve callback: %s", err)
 			return
 		}
 
-		if len(ads) == 0 {
-			msg := tgbotapi.NewMessage(chatID, "You have no ads.")
-			bot.Send(msg)
+		if err := h.services.Ad.ApproveAd(adID); err != nil {
+			log.Printf("Failed to approve ad: %s", err)
 			return
 		}
 
-		adsMessage := "📄 *Your Ads:*\n"
-		for _, ad := range ads {
-			adsMessage += fmt.Sprintf(
-				"ID: %d\nTitle: %s\nPrice: %.2f$\nStock: %d\n\n",
-				ad.ID, ad.Title, ad.Price, ad.Stock,
-			)
+		bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad #%d has been approved ✅", adID)))
+
+		ad, err := h.services.Ad.GetAdByIDTg(adID)
+		if err == nil {
+			h.NotifyUser(bot, ad.SellerID, ad, true)
 		}
 
-		msg := tgbotapi.NewMessage(chatID, adsMessage)
-		msg.ParseMode = "Markdown"
-		bot.Send(msg)
-
-	case "my_orders":
-		user, err := h.services.GetUserById(int(callbackQuery.From.ID))
+	} else if strings.HasPrefix(data, "reject_ad_") {
+		adID, err := strconv.Atoi(strings.TrimPrefix(data, "reject_ad_"))
 		if err != nil {
-			log.Printf("Error fetching user orders: %v", err)
-			msg := tgbotapi.NewMessage(chatID, "Error loading your orders. Please try again later.")
-			bot.Send(msg)
+			log.Printf("Invalid ad ID in reject callback: %s", err)
 			return
 		}
 
-		if len(user.Purchased) == 0 {
-			msg := tgbotapi.NewMessage(chatID, "You have no purchases.")
-			bot.Send(msg)
+		if err := h.services.Ad.RejectAd(adID); err != nil {
+			log.Printf("Failed to reject ad: %s", err)
 			return
 		}
 
-		ordersMessage := "🛒 *Your Orders:*\n"
-		for _, ad := range user.Purchased {
-			ordersMessage += fmt.Sprintf(
-				"\n*Title:* %s\n*Price:* %.2f\n*Description:* %s\n\n",
-				ad.Title, ad.Price, ad.Description,
+		bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad #%d has been rejected ❌", adID)))
+
+		ad, err := h.services.Ad.GetAdByIDTg(adID)
+		if err == nil {
+			h.NotifyUser(bot, ad.SellerID, ad, false)
+		}
+	} else if strings.HasPrefix(data, "approve_payout_") {
+		payoutIDStr := strings.TrimPrefix(data, "approve_payout_")
+		payoutID, err := strconv.Atoi(payoutIDStr)
+		if err != nil {
+			log.Printf("Invalid user ID in approve payout callback: %v", err)
+			return
+		}
+
+		payout, err := h.services.Payout.GetPayoutByID(payoutID)
+		if err != nil {
+			log.Printf("Error fetching payout for payoutID %d: %v", payoutID, err)
+			return
+		}
+
+		user, err := h.services.GetUserById(payout.TelegramID)
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			return
+		}
+
+		err = h.services.Payout.ApprovePayoutRequest(payoutID)
+		if err != nil {
+			log.Printf("Error approving payout: %v", err)
+			return
+		}
+
+		h.NotifyPayout(bot, user, payout.Amount, true)
+
+		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Payout for user %s has been approved ✅", user.Username))
+		bot.Send(msg)
+	} else if strings.HasPrefix(data, "reject_payout_") {
+		payoutIDStr := strings.TrimPrefix(data, "reject_payout_")
+		payoutID, err := strconv.Atoi(payoutIDStr)
+		if err != nil {
+			log.Printf("Invalid user ID in reject payout callback: %v", err)
+			return
+		}
+
+		payout, err := h.services.Payout.GetPayoutByID(payoutID)
+		if err != nil {
+			log.Printf("Error fetching payout for payout ID %d: %v", payoutID, err)
+			return
+		}
+
+		user, err := h.services.GetUserById(payout.TelegramID)
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			return
+		}
+
+		err = h.services.Payout.RejectPayoutRequest(payoutID)
+		if err != nil {
+			log.Printf("Error rejecting payout: %v", err)
+			return
+		}
+
+		h.NotifyPayout(bot, user, payout.Amount, false)
+
+		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Payout for user %s has been rejected ❌", user.Username))
+		bot.Send(msg)
+	} else {
+		switch data {
+		case "add_balance":
+			h.userStates[callbackQuery.From.ID] = "adding_balance"
+
+			msg := tgbotapi.NewMessage(chatID, "Enter the amount to top up or press 'Cancel':")
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("❌ Cancel"),
+				),
 			)
-		}
+			bot.Send(msg)
 
-		msg := tgbotapi.NewMessage(chatID, ordersMessage)
-		msg.ParseMode = "Markdown"
-		bot.Send(msg)
-	case "change_photo":
-		msg := tgbotapi.NewMessage(chatID, "Please upload your new profile picture:")
-		bot.Send(msg)
-		h.userStates[callbackQuery.From.ID] = "changing_photo"
-	default:
-		msg := tgbotapi.NewMessage(chatID, "Unknown action.")
-		bot.Send(msg)
+		case "request_payout":
+			user, err := h.services.GetUserById(int(callbackQuery.From.ID))
+			if err != nil {
+				log.Printf("Error fetching user: %v", err)
+				msg := tgbotapi.NewMessage(chatID, "Failed to load your profile. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			msg := tgbotapi.NewMessage(chatID, fmt.Sprintf(
+				"Your balance: %.2f$\nEnter the amount you want to withdraw:",
+				user.Balance,
+			))
+			bot.Send(msg)
+
+			h.userStates[callbackQuery.From.ID] = "requesting_payout"
+
+		case "change_name":
+			msg := tgbotapi.NewMessage(chatID, "Please enter your new name:")
+			bot.Send(msg)
+			h.userStates[callbackQuery.From.ID] = "changing_name"
+
+		case "my_ads":
+			ads, err := h.services.Ad.GetAdsByUserID(int(callbackQuery.From.ID))
+			if err != nil {
+				msg := tgbotapi.NewMessage(chatID, "Error loading your ads. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			if len(ads) == 0 {
+				msg := tgbotapi.NewMessage(chatID, "You have no ads.")
+				bot.Send(msg)
+				return
+			}
+
+			adsMessage := "📄 *Your Ads:*\n"
+			for _, ad := range ads {
+				adsMessage += fmt.Sprintf(
+					"ID: %d\nTitle: %s\nPrice: %.2f$\nStock: %d\n\n",
+					ad.ID, ad.Title, ad.Price, ad.Stock,
+				)
+			}
+
+			msg := tgbotapi.NewMessage(chatID, adsMessage)
+			msg.ParseMode = "Markdown"
+			bot.Send(msg)
+
+		case "my_orders":
+			user, err := h.services.GetUserById(int(callbackQuery.From.ID))
+			if err != nil {
+				log.Printf("Error fetching user orders: %v", err)
+				msg := tgbotapi.NewMessage(chatID, "Error loading your orders. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			if len(user.Purchased) == 0 {
+				msg := tgbotapi.NewMessage(chatID, "You have no purchases.")
+				bot.Send(msg)
+				return
+			}
+
+			ordersMessage := "🛒 *Your Orders:*\n"
+			for _, ad := range user.Purchased {
+				ordersMessage += fmt.Sprintf(
+					"\n*Title:* %s\n*Price:* %.2f\n*Description:* %s\n\n",
+					ad.Title, ad.Price, ad.Description,
+				)
+			}
+
+			msg := tgbotapi.NewMessage(chatID, ordersMessage)
+			msg.ParseMode = "Markdown"
+			bot.Send(msg)
+		case "change_photo":
+			msg := tgbotapi.NewMessage(chatID, "Please upload your new profile picture:")
+			bot.Send(msg)
+			h.userStates[callbackQuery.From.ID] = "changing_photo"
+		default:
+			msg := tgbotapi.NewMessage(chatID, "Unknown action.")
+			bot.Send(msg)
+		}
 	}
 }
 
@@ -734,4 +942,92 @@ func downloadFileFromTg(bot *tgbotapi.BotAPI, fileID string) ([]byte, error) {
 	}
 
 	return fileData, nil
+}
+
+func (h *Handler) SendAdToModeration(bot *tgbotapi.BotAPI, ad model.Ad, moderationGroupID int64) error {
+	messageText := fmt.Sprintf(
+		"📢 *Ad for Moderation:*\n"+
+			"**Title:** %s\n"+
+			"**Description:** %s\n"+
+			"**Price:** %.2f\n"+
+			"**Stock:** %d\n"+
+			"**Category:** %d\n"+
+			"**Seller:** %d\n",
+		ad.Title, ad.Description, ad.Price, ad.Stock, ad.CategoryID, ad.SellerID,
+	)
+
+	photo := tgbotapi.NewPhoto(moderationGroupID, tgbotapi.FilePath(ad.PhotoURL))
+	photo.Caption = messageText
+	photo.ParseMode = "Markdown"
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("✅ Approve", fmt.Sprintf("approve_ad_%d", ad.ID)),
+			tgbotapi.NewInlineKeyboardButtonData("❌ Reject", fmt.Sprintf("reject_ad_%d", ad.ID)),
+		),
+	)
+
+	photo.ReplyMarkup = keyboard
+	_, err := bot.Send(photo)
+	return err
+}
+
+func (h *Handler) NotifyUser(bot *tgbotapi.BotAPI, userID int, ad model.Ad, approved bool) {
+	var messageText string
+	if approved {
+		messageText = fmt.Sprintf("🎉 Your ad '%s' has been approved and is now visible!", ad.Title)
+	} else {
+		messageText = fmt.Sprintf("❌ Your ad '%s' has been rejected.", ad.Title)
+	}
+
+	bot.Send(tgbotapi.NewMessage(int64(userID), messageText))
+}
+
+func (h *Handler) SendPayoutRequestToModeration(bot *tgbotapi.BotAPI, user model.User, amount float64, payoutGroupID int64, payoutID int) error {
+	messageText := fmt.Sprintf(
+		"💸 *Payout Request:*\n"+
+			"**User:** %s\n"+
+			"**Telegram ID:** %d\n"+
+			"**Amount:** %.2f$\n",
+		user.Username, user.TelegramID, amount,
+	)
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("✅ Approve", fmt.Sprintf("approve_payout_%d", payoutID)),
+			tgbotapi.NewInlineKeyboardButtonData("❌ Reject", fmt.Sprintf("reject_payout_%d", payoutID)),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(payoutGroupID, messageText)
+	msg.ParseMode = "Markdown"
+	msg.ReplyMarkup = keyboard
+
+	_, err := bot.Send(msg)
+	return err
+}
+
+func (h *Handler) NotifyPayout(bot *tgbotapi.BotAPI, user model.User, amount float64, status bool) {
+	var messageText string
+
+	if status {
+		// Уведомление об успешной выплате
+		messageText = fmt.Sprintf(
+			"🎉 Your payout request for %.2f$ has been successfully processed! The funds should arrive shortly.",
+			amount,
+		)
+	} else {
+		// Уведомление об отклонении выплаты
+		messageText = fmt.Sprintf(
+			"❌ Your payout request for %.2f$ has been declined. Please contact support for more details.",
+			amount,
+		)
+	}
+
+	// Отправка уведомления пользователю
+	msg := tgbotapi.NewMessage(int64(user.TelegramID), messageText)
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Printf("Failed to send payout notification to user %d: %v", user.TelegramID, err)
+	}
 }

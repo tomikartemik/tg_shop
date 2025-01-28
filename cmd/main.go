@@ -41,4 +41,7 @@ func main() {
 		logrus.Fatalf("error occured while running server %s", err.Error())
 	}
 
+	if err != nil {
+		log.Panic(err)
+	}
 }

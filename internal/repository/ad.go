@@ -102,3 +102,19 @@ func (repo *AdRepository) ChangeStock(adID, newStock int) error {
 
 	return nil
 }
+
+func (repo *AdRepository) UpdateAdStatus(adID int, approved bool) error {
+	return repo.db.Model(&model.Ad{}).Where("id = ?", adID).Update("approved", approved).Error
+}
+
+func (repo *AdRepository) GetAdByID(adID int) (model.Ad, error) {
+	var ad model.Ad
+	err := repo.db.Where("id = ?", adID).First(&ad).Error
+	return ad, err
+}
+
+func (repo *AdRepository) GetAdByIDTg(adID int) (model.Ad, error) {
+	var ad model.Ad
+	err := repo.db.Where("id = ?", adID).First(&ad).Error
+	return ad, err
+}

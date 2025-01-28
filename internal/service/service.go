@@ -11,6 +11,7 @@ type Service struct {
 	Ad
 	Category
 	CryptoCloud
+	Payout
 }
 
 func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
@@ -19,6 +20,7 @@ func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 		Ad:          NewAdService(repos.Ad, repos.User, repos.Category),
 		Category:    NewCategoryService(repos.Category),
 		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice),
+		Payout:      NewPayoutService(repos.Payout),
 	}
 }
 
@@ -47,6 +49,9 @@ type Ad interface {
 	GetAdByID(idStr string) (model.AdInfo, error)
 	EditAd(adID int, updatedAd model.Ad) error
 	DeleteAd(adID int) error
+	ApproveAd(adID int) error
+	RejectAd(adID int) error
+	GetAdByIDTg(adID int) (model.Ad, error)
 }
 
 type Category interface {
@@ -55,4 +60,11 @@ type Category interface {
 
 type CryptoCloud interface {
 	CreateInvoice(amount float64, telegramID int) (string, error)
+}
+
+type Payout interface {
+	CreatePayoutRequest(telegramID int, amount float64) (int, error)
+	ApprovePayoutRequest(requestID int) error
+	RejectPayoutRequest(requestID int) error
+	GetPayoutByID(telegramID int) (model.PayoutRequest, error)
 }

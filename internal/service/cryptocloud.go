@@ -36,7 +36,7 @@ type CryptoCloudService struct {
 
 func NewCryptoCloudService(repoUser repository.User, repoInvoice repository.Invoice) *CryptoCloudService {
 	apiToken = os.Getenv("API_TOKEN")
-	apiToken = os.Getenv("SHOP_ID")
+	shopID = os.Getenv("SHOP_ID")
 	return &CryptoCloudService{
 		repoUser:    repoUser,
 		repoInvoice: repoInvoice,
@@ -52,7 +52,6 @@ func (s *CryptoCloudService) CreateInvoice(amount float64, telegramID int) (stri
 
 	url := "https://api.cryptocloud.plus/v2/invoice/create"
 
-	// Формируем тело запроса
 	payload := map[string]interface{}{
 		"shop_id":  shopID,
 		"amount":   fmt.Sprintf("%.2f", amount),

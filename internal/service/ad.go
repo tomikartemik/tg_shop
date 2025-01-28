@@ -131,6 +131,7 @@ func (s *AdService) DeleteAd(adID int) error {
 }
 
 func (s *AdService) convertAdToAdInfo(ad model.Ad) (model.AdInfo, error) {
+
 	adInfo := model.AdInfo{}
 
 	seller, err := s.repoUser.GetUserById(ad.SellerID)
@@ -196,4 +197,16 @@ func (s *AdService) convertAdsToAdsShortInfo(ads []model.Ad) ([]model.AdShortInf
 	}
 
 	return adsShortInfo, nil
+}
+
+func (s *AdService) ApproveAd(adID int) error {
+	return s.repo.UpdateAdStatus(adID, true)
+}
+
+func (s *AdService) RejectAd(adID int) error {
+	return s.repo.UpdateAdStatus(adID, false)
+}
+
+func (s *AdService) GetAdByIDTg(adID int) (model.Ad, error) {
+	return s.repo.GetAdByIDTg(adID)
 }
