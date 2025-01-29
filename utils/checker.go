@@ -9,11 +9,22 @@ func StartEarningProcessor(earningService service.Earning) {
 	go func() {
 		for {
 			if err := earningService.ProcessEarnings(); err != nil {
-				// Логируем ошибку (можно использовать log.Println или сторонний логгер)
 				println("Error processing earnings:", err.Error())
 			}
 
-			time.Sleep(30 * time.Minute) // Пауза между обработкой партий
+			time.Sleep(30 * time.Minute)
+		}
+	}()
+}
+
+func StartCheckPremiums(earningService service.Premium) {
+	go func() {
+		for {
+			if err := earningService.GetPremiumInfo(); err != nil {
+				println("Error processing earnings:", err.Error())
+			}
+
+			time.Sleep(30 * time.Minute)
 		}
 	}()
 }

@@ -43,6 +43,7 @@ func main() {
 	}
 
 	go utils.StartEarningProcessor(services.Earning)
+	go utils.StartCheckPremiums(services.Premium)
 
 	if err != nil {
 		log.Panic(err)

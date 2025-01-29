@@ -13,6 +13,7 @@ type Service struct {
 	CryptoCloud
 	Payout
 	Earning
+	Premium
 }
 
 func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
@@ -23,6 +24,7 @@ func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice),
 		Payout:      NewPayoutService(repos.Payout),
 		Earning:     NewEarningService(repos.Earning, repos.User),
+		Premium:     NewPremiumService(repos.Premium),
 	}
 }
 
@@ -74,4 +76,8 @@ type Payout interface {
 
 type Earning interface {
 	ProcessEarnings() error
+}
+
+type Premium interface {
+	GetPremiumInfo() error
 }

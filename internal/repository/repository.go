@@ -12,6 +12,7 @@ type Repository struct {
 	Invoice
 	Payout
 	Earning
+	Premium
 }
 
 func NewRepository(db *gorm.DB) *Repository {
@@ -22,6 +23,7 @@ func NewRepository(db *gorm.DB) *Repository {
 		Invoice:  NewInvoiceRepository(db),
 		Payout:   NewPayoutRequestRepository(db),
 		Earning:  NewEarningRepository(db),
+		Premium:  NewPremiumRepository(db),
 	}
 }
 
@@ -71,4 +73,9 @@ type Payout interface {
 type Earning interface {
 	GetUnprocessedEarnings() ([]model.Earning, error)
 	MarkAsProcessed(earning *model.Earning) error
+}
+
+type Premium interface {
+	GetExpiredPremiums() ([]model.User, []model.User, error)
+	ResetPremiums(users []model.User)
 }
