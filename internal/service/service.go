@@ -62,7 +62,7 @@ type Category interface {
 
 type CryptoCloud interface {
 	CreateInvoice(amount float64, telegramID int) (string, error)
-	ChangeStatus(id int, status string) error
+	ChangeStatus(id string, status string) error
 }
 
 type Payout interface {

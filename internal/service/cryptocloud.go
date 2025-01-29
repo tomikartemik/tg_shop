@@ -101,7 +101,9 @@ func (s *CryptoCloudService) CreateInvoice(amount float64, telegramID int) (stri
 	return response.Result.Link, nil
 }
 
-func (s *CryptoCloudService) ChangeStatus(id int, status string) error {
+func (s *CryptoCloudService) ChangeStatus(idStr string, status string) error {
+	id, err := strconv.Atoi(idStr)
+
 	if status != "success" {
 		return s.repoInvoice.ChangeStatus(id, status)
 	}
