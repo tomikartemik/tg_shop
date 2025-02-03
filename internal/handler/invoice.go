@@ -3,32 +3,26 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"io/ioutil"
 	"net/http"
-	"tg_shop/internal/model"
 )
 
 func (h *Handler) paymentCallback(c *gin.Context) {
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
+	// Чтение параметров из тела запроса
+	status := c.PostForm("status")
+	orderID := c.PostForm("order_id")
+
+	// Вывод параметров для отладки
+	fmt.Println("Status:", status)
+	fmt.Println("Order ID:", orderID)
+
+	if status == "" || orderID == "" {
+		newErrorResponse(c, http.StatusBadRequest, "Отсутствуют необходимые параметры")
 		return
 	}
 
-	// Выводим тело запроса в консоль
-	fmt.Println("Request Body:", string(body))
-
-	var paymentCallback model.PaymentCallback
-	if err := c.ShouldBindJSON(&paymentCallback); err != nil {
-		fmt.Println(err)
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
-	fmt.Println(paymentCallback)
-
-	err = h.services.ChangeStatus(paymentCallback.OrderID, paymentCallback.Status)
+	// Изменение статуса заказа
+	err := h.services.ChangeStatus(orderID, status)
 	if err != nil {
-		fmt.Println(err)
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
