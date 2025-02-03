@@ -82,7 +82,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	////////////////////////////////////////////////////////////
 	cryptocloud := router.Group("/payment-callback")
 	{
-		cryptocloud.GET("", h.paymentCallback)
+		cryptocloud.POST("", h.paymentCallback)
 	}
 	////////////////////////////////////////////////////////////
 	return router
