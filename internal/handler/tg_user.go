@@ -719,6 +719,7 @@ func getAdCreationButtons(state string) tgbotapi.ReplyKeyboardMarkup {
 func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbotapi.CallbackQuery) {
 	data := callbackQuery.Data
 	chatID := callbackQuery.Message.Chat.ID
+	messageID := callbackQuery.Message.MessageID
 
 	if strings.HasPrefix(data, "approve_ad_") {
 		adID, err := strconv.Atoi(strings.TrimPrefix(data, "approve_ad_"))
@@ -731,6 +732,10 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			log.Printf("Failed to approve ad: %s", err)
 			return
 		}
+
+		// Убираем кнопки из сообщения
+		edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.InlineKeyboardMarkup{})
+		bot.Send(edit)
 
 		bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad #%d has been approved ✅", adID)))
 
@@ -751,12 +756,17 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
+		// Убираем кнопки из сообщения
+		edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.InlineKeyboardMarkup{})
+		bot.Send(edit)
+
 		bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad #%d has been rejected ❌", adID)))
 
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
 		if err == nil {
 			h.NotifyUser(bot, ad.SellerID, ad, false)
 		}
+
 	} else if strings.HasPrefix(data, "approve_payout_") {
 		payoutIDStr := strings.TrimPrefix(data, "approve_payout_")
 		payoutID, err := strconv.Atoi(payoutIDStr)
@@ -783,10 +793,15 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
+		// Убираем кнопки из сообщения
+		edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.InlineKeyboardMarkup{})
+		bot.Send(edit)
+
 		h.NotifyPayout(bot, user, payout.Amount, true)
 
 		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Payout for user %s has been approved ✅", user.Username))
 		bot.Send(msg)
+
 	} else if strings.HasPrefix(data, "reject_payout_") {
 		payoutIDStr := strings.TrimPrefix(data, "reject_payout_")
 		payoutID, err := strconv.Atoi(payoutIDStr)
@@ -812,6 +827,10 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			log.Printf("Error rejecting payout: %v", err)
 			return
 		}
+
+		// Убираем кнопки из сообщения
+		edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.InlineKeyboardMarkup{})
+		bot.Send(edit)
 
 		h.NotifyPayout(bot, user, payout.Amount, false)
 
