@@ -144,13 +144,17 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		// Отправка сообщения в группу модерации
 		payoutGroupID, _ := strconv.ParseInt(os.Getenv("GROUP_WITHDRAWAL_ID"), 10, 64)
-		err = h.SendPayoutRequestToModeration(bot, user, amount, payoutGroupID, payoutID)
+		messageID, err := h.SendPayoutRequestToModeration(bot, user, amount, payoutGroupID, payoutID)
 		if err != nil {
 			log.Printf("Error sending payout request to moderation group: %v", err)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to notify moderators. Please try again later.")
 			bot.Send(msg)
 			return
 		}
+
+		_ = messageID
+
+		// Если messageID нам не нужен прямо сейчас, но его нужно вернуть из функции
 
 		delete(h.userStates, telegramID)
 
@@ -681,11 +685,15 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 			delete(h.tempAdData, telegramID)
 			delete(h.userStates, telegramID)
 			moderationGroupID, _ := strconv.ParseInt(os.Getenv("GROUP_MODERATION_ID"), 10, 64)
-			err = h.SendAdToModeration(bot, createdAd, moderationGroupID)
+			messageID, err := h.SendAdToModeration(bot, createdAd, moderationGroupID)
+			if err != nil {
+				log.Printf("Error sending ad to moderation group: %v", err)
+			}
 			if err != nil {
 				log.Printf("Error sending ad to moderation group: %v", err)
 			}
 
+			_ = messageID
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
 				"Your ad '%s' has been submitted for moderation. Ad ID: %d",
 				createdAd.Title, createdAd.ID,
@@ -719,61 +727,52 @@ func getAdCreationButtons(state string) tgbotapi.ReplyKeyboardMarkup {
 func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbotapi.CallbackQuery) {
 	data := callbackQuery.Data
 	chatID := callbackQuery.Message.Chat.ID
-	messageID := callbackQuery.Message.MessageID
+	messageID := callbackQuery.Message.MessageID // ID сообщения с кнопками
 
 	if strings.HasPrefix(data, "approve_ad_") {
-		adID, err := strconv.Atoi(strings.TrimPrefix(data, "approve_ad_"))
-		if err != nil {
-			log.Printf("Invalid ad ID in approve callback: %s", err)
-			return
-		}
+		parts := strings.Split(data, "_")
+		adID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
 
 		if err := h.services.Ad.ApproveAd(adID); err != nil {
 			log.Printf("Failed to approve ad: %s", err)
 			return
 		}
 
-		// Убираем кнопки из сообщения
-		edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.InlineKeyboardMarkup{})
-		bot.Send(edit)
+		// Удаляем кнопки
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(groupID, messageID, tgbotapi.InlineKeyboardMarkup{})
+		bot.Send(editMarkup)
 
-		bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad #%d has been approved ✅", adID)))
-
+		// Уведомляем продавца
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
 		if err == nil {
 			h.NotifyUser(bot, ad.SellerID, ad, true)
 		}
 
 	} else if strings.HasPrefix(data, "reject_ad_") {
-		adID, err := strconv.Atoi(strings.TrimPrefix(data, "reject_ad_"))
-		if err != nil {
-			log.Printf("Invalid ad ID in reject callback: %s", err)
-			return
-		}
+		parts := strings.Split(data, "_")
+		adID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
 
 		if err := h.services.Ad.RejectAd(adID); err != nil {
 			log.Printf("Failed to reject ad: %s", err)
 			return
 		}
 
-		// Убираем кнопки из сообщения
-		edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.InlineKeyboardMarkup{})
-		bot.Send(edit)
+		// Удаляем кнопки
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(groupID, messageID, tgbotapi.InlineKeyboardMarkup{})
+		bot.Send(editMarkup)
 
-		bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad #%d has been rejected ❌", adID)))
-
+		// Уведомляем продавца
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
 		if err == nil {
 			h.NotifyUser(bot, ad.SellerID, ad, false)
 		}
 
 	} else if strings.HasPrefix(data, "approve_payout_") {
-		payoutIDStr := strings.TrimPrefix(data, "approve_payout_")
-		payoutID, err := strconv.Atoi(payoutIDStr)
-		if err != nil {
-			log.Printf("Invalid user ID in approve payout callback: %v", err)
-			return
-		}
+		parts := strings.Split(data, "_")
+		payoutID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
 
 		payout, err := h.services.Payout.GetPayoutByID(payoutID)
 		if err != nil {
@@ -793,22 +792,16 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		// Убираем кнопки из сообщения
-		edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.InlineKeyboardMarkup{})
-		bot.Send(edit)
+		// Удаляем кнопки
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(groupID, messageID, tgbotapi.InlineKeyboardMarkup{})
+		bot.Send(editMarkup)
 
 		h.NotifyPayout(bot, user, payout.Amount, true)
 
-		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Payout for user %s has been approved ✅", user.Username))
-		bot.Send(msg)
-
 	} else if strings.HasPrefix(data, "reject_payout_") {
-		payoutIDStr := strings.TrimPrefix(data, "reject_payout_")
-		payoutID, err := strconv.Atoi(payoutIDStr)
-		if err != nil {
-			log.Printf("Invalid user ID in reject payout callback: %v", err)
-			return
-		}
+		parts := strings.Split(data, "_")
+		payoutID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
 
 		payout, err := h.services.Payout.GetPayoutByID(payoutID)
 		if err != nil {
@@ -828,14 +821,11 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		// Убираем кнопки из сообщения
-		edit := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.InlineKeyboardMarkup{})
-		bot.Send(edit)
+		// Удаляем кнопки
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(groupID, messageID, tgbotapi.InlineKeyboardMarkup{})
+		bot.Send(editMarkup)
 
 		h.NotifyPayout(bot, user, payout.Amount, false)
-
-		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Payout for user %s has been rejected ❌", user.Username))
-		bot.Send(msg)
 	} else {
 		switch data {
 		case "add_balance":
@@ -963,12 +953,12 @@ func downloadFileFromTg(bot *tgbotapi.BotAPI, fileID string) ([]byte, error) {
 	return fileData, nil
 }
 
-func (h *Handler) SendAdToModeration(bot *tgbotapi.BotAPI, ad model.Ad, moderationGroupID int64) error {
+func (h *Handler) SendAdToModeration(bot *tgbotapi.BotAPI, ad model.Ad, moderationGroupID int64) (int, error) {
 	messageText := fmt.Sprintf(
 		"📢 *Ad for Moderation:*\n"+
 			"**Title:** %s\n"+
 			"**Description:** %s\n"+
-			"**Price:** %.2f\n"+
+			"**Price:** %.2f$\n"+
 			"**Stock:** %d\n"+
 			"**Category:** %d\n"+
 			"**Seller:** %d\n",
@@ -981,14 +971,46 @@ func (h *Handler) SendAdToModeration(bot *tgbotapi.BotAPI, ad model.Ad, moderati
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("✅ Approve", fmt.Sprintf("approve_ad_%d", ad.ID)),
-			tgbotapi.NewInlineKeyboardButtonData("❌ Reject", fmt.Sprintf("reject_ad_%d", ad.ID)),
+			tgbotapi.NewInlineKeyboardButtonData("✅ Approve", fmt.Sprintf("approve_ad_%d_%d", ad.ID, moderationGroupID)),
+			tgbotapi.NewInlineKeyboardButtonData("❌ Reject", fmt.Sprintf("reject_ad_%d_%d", ad.ID, moderationGroupID)),
 		),
 	)
 
 	photo.ReplyMarkup = keyboard
-	_, err := bot.Send(photo)
-	return err
+	sentMsg, err := bot.Send(photo)
+	if err != nil {
+		return 0, err
+	}
+
+	return sentMsg.MessageID, nil
+}
+
+func (h *Handler) SendPayoutRequestToModeration(bot *tgbotapi.BotAPI, user model.User, amount float64, payoutGroupID int64, payoutID int) (int, error) {
+	messageText := fmt.Sprintf(
+		"💸 *Payout Request:*\n"+
+			"**User:** %s\n"+
+			"**Telegram ID:** %d\n"+
+			"**Amount:** %.2f$\n",
+		user.Username, user.TelegramID, amount,
+	)
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("✅ Approve", fmt.Sprintf("approve_payout_%d_%d", payoutID, payoutGroupID)),
+			tgbotapi.NewInlineKeyboardButtonData("❌ Reject", fmt.Sprintf("reject_payout_%d_%d", payoutID, payoutGroupID)),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(payoutGroupID, messageText)
+	msg.ParseMode = "Markdown"
+	msg.ReplyMarkup = keyboard
+
+	sentMsg, err := bot.Send(msg)
+	if err != nil {
+		return 0, err
+	}
+
+	return sentMsg.MessageID, nil
 }
 
 func (h *Handler) NotifyUser(bot *tgbotapi.BotAPI, userID int, ad model.Ad, approved bool) {
@@ -1000,30 +1022,6 @@ func (h *Handler) NotifyUser(bot *tgbotapi.BotAPI, userID int, ad model.Ad, appr
 	}
 
 	bot.Send(tgbotapi.NewMessage(int64(userID), messageText))
-}
-
-func (h *Handler) SendPayoutRequestToModeration(bot *tgbotapi.BotAPI, user model.User, amount float64, payoutGroupID int64, payoutID int) error {
-	messageText := fmt.Sprintf(
-		"💸 *Payout Request:*\n"+
-			"**User:** %s\n"+
-			"**Telegram ID:** %d\n"+
-			"**Amount:** %.2f$\n",
-		user.Username, user.TelegramID, amount,
-	)
-
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("✅ Approve", fmt.Sprintf("approve_payout_%d", payoutID)),
-			tgbotapi.NewInlineKeyboardButtonData("❌ Reject", fmt.Sprintf("reject_payout_%d", payoutID)),
-		),
-	)
-
-	msg := tgbotapi.NewMessage(payoutGroupID, messageText)
-	msg.ParseMode = "Markdown"
-	msg.ReplyMarkup = keyboard
-
-	_, err := bot.Send(msg)
-	return err
 }
 
 func (h *Handler) NotifyPayout(bot *tgbotapi.BotAPI, user model.User, amount float64, status bool) {
