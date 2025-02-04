@@ -17,31 +17,43 @@ func NewPremiumRepository(db *gorm.DB) *PremiumRepository {
 func (repo *PremiumRepository) GetExpiredPremiums() ([]model.User, []model.User, error) {
 	var expiresInThreeDays []model.User
 	var expired []model.User
-	err := repo.db.Where("expire_premium <= ? AND is_premium IS TRUE", time.Now().Add(72*time.Hour)).
-		Order("id ASC").
+	now := time.Now()
+
+	// Получаем пользователей, у которых премиум истекает через 3 дня
+	err := repo.db.Where("expire_premium BETWEEN ? AND ? AND is_premium = TRUE", now, now.Add(72*time.Hour)).
+		Order("expire_premium ASC").
 		Find(&expiresInThreeDays).
 		Error
-
 	if err != nil {
 		return nil, nil, err
 	}
 
-	err = repo.db.Where("expire_premium >= ? AND is_premium IS TRUE", time.Now()).
-		Order("id ASC").
-		Find(&expiresInThreeDays).
+	err = repo.db.Where("expire_premium < ? AND is_premium = TRUE", now).
+		Order("expire_premium ASC").
+		Find(&expired).
 		Error
-
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return expiresInThreeDays, expired, err
+	return expiresInThreeDays, expired, nil
 }
 
-// ВОТ ЭТУ ФУНКЦИЮ ВОЗМОЖНО НАДО БУДЕТ ДОПИЛИТЬ
-func (repo *PremiumRepository) ResetPremiums(users []model.User) {
+func (repo *PremiumRepository) ResetPremiums(users []model.User) error {
+	var userIDs []int
 	for _, user := range users {
-		user.IsPremium = false
-		repo.db.Save(&user)
+		userIDs = append(userIDs, user.TelegramID)
 	}
+
+	if len(userIDs) > 0 {
+		err := repo.db.Model(&model.User{}).
+			Where("telegram_id IN ?", userIDs).
+			Update("is_premium", false).
+			Error
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -9,7 +9,7 @@ import (
 	"tg_shop/internal/handler"
 	"tg_shop/internal/repository"
 	"tg_shop/internal/service"
-	"tg_shop/utils"
+	"time"
 )
 
 func main() {
@@ -31,6 +31,19 @@ func main() {
 	services := service.NewService(repos, bot)
 	handlers := handler.NewHandler(services)
 	adm_handlers := handler.NewAdminHandler(services)
+	premiumRepo := repository.NewPremiumRepository(db)
+	premiumService := service.NewPremiumService(premiumRepo)
+	premiumHandler := handler.NewPremiumHandler(premiumService, bot)
+
+	// Запускаем проверку премиума раз в день
+	go func() {
+		for {
+			time.Sleep(24 * time.Hour)
+			premiumHandler.NotifyPremiumUsers()
+		}
+	}()
+
+	select {}
 
 	//cron.InitCron(bot, repos.User)
 
@@ -42,8 +55,8 @@ func main() {
 		logrus.Fatalf("error occured while running server %s", err.Error())
 	}
 
-	go utils.StartEarningProcessor(services.Earning)
-	go utils.StartCheckPremiums(services.Premium)
+	//go utils.StartEarningProcessor(services.Earning)
+	//go utils.StartCheckPremiums(services.Premium)
 
 	if err != nil {
 		log.Panic(err)

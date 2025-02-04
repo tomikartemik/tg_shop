@@ -77,5 +77,5 @@ type Earning interface {
 
 type Premium interface {
 	GetExpiredPremiums() ([]model.User, []model.User, error)
-	ResetPremiums(users []model.User)
+	ResetPremiums(users []model.User) error
 }

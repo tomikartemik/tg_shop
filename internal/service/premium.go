@@ -1,7 +1,8 @@
 package service
 
 import (
-	"fmt"
+	"log"
+	"tg_shop/internal/model"
 	"tg_shop/internal/repository"
 )
 
@@ -15,19 +16,22 @@ func NewPremiumService(repo repository.Premium) *PremiumService {
 	}
 }
 
-// ВОТ ТУТ ПОЛУЧАЕМ ИНФУ
-// expiresInThreeDays - те, у кого премиум истекает меньше, чем через 3 дня, им кидаем сообщение
-// expiresInThreeDays - те, у кого премиум истек, сам знаешь, что с ними делать
-// return просто прописал, пока не очень понимаю, что вообще возвращать надо будет
-func (s *PremiumService) GetPremiumInfo() error {
+func (s *PremiumService) GetPremiumInfo() ([]model.User, []model.User, error) {
 	expiresInThreeDays, expired, err := s.repo.GetExpiredPremiums()
-
-	fmt.Println(expiresInThreeDays)
-	fmt.Println(expired)
-	//строчки выше, просто чтоб запускалось, надо как-то переменные заюзать
-
 	if err != nil {
-		return err
+		log.Printf("Ошибка получения информации о премиумах: %v", err)
+		return nil, nil, err
 	}
-	return err
+
+	// Если есть истёкшие премиумы, отключаем их
+	if len(expired) > 0 {
+		err := s.repo.ResetPremiums(expired) // Массовое обновление
+		if err != nil {
+			log.Printf("Ошибка сброса премиума: %v", err)
+			return nil, nil, err
+		}
+		log.Printf("✅ Отключен премиум у %d пользователей", len(expired))
+	}
+
+	return expiresInThreeDays, expired, nil
 }

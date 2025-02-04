@@ -79,5 +79,5 @@ type Earning interface {
 }
 
 type Premium interface {
-	GetPremiumInfo() error
+	GetPremiumInfo() ([]model.User, []model.User, error)
 }
