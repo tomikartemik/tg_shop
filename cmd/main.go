@@ -35,7 +35,6 @@ func main() {
 	premiumService := service.NewPremiumService(premiumRepo)
 	premiumHandler := handler.NewPremiumHandler(premiumService, bot)
 
-	// Запускаем проверку премиума раз в день
 	go func() {
 		for {
 			time.Sleep(24 * time.Hour)
