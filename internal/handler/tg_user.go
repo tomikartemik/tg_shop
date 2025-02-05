@@ -727,7 +727,7 @@ func getAdCreationButtons(state string) tgbotapi.ReplyKeyboardMarkup {
 func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbotapi.CallbackQuery) {
 	data := callbackQuery.Data
 	chatID := callbackQuery.Message.Chat.ID
-	messageID := callbackQuery.Message.MessageID // ID сообщения с кнопками
+	messageID := callbackQuery.Message.MessageID
 
 	if strings.HasPrefix(data, "approve_ad_") {
 		parts := strings.Split(data, "_")
@@ -739,9 +739,17 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		// Удаляем кнопки
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(groupID, messageID, tgbotapi.InlineKeyboardMarkup{})
-		bot.Send(editMarkup)
+		// Удаляем кнопки, передавая пустую клавиатуру
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
 
 		// Уведомляем продавца
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
@@ -759,9 +767,17 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		// Удаляем кнопки
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(groupID, messageID, tgbotapi.InlineKeyboardMarkup{})
-		bot.Send(editMarkup)
+		// Удаляем кнопки, передавая пустую клавиатуру
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
 
 		// Уведомляем продавца
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
@@ -774,29 +790,99 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 		payoutID, _ := strconv.Atoi(parts[2])
 		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
 
+		// Получаем информацию о выплате
 		payout, err := h.services.Payout.GetPayoutByID(payoutID)
 		if err != nil {
 			log.Printf("Error fetching payout for payoutID %d: %v", payoutID, err)
 			return
 		}
 
+		// Получаем информацию о пользователе
 		user, err := h.services.GetUserById(payout.TelegramID)
 		if err != nil {
 			log.Printf("Error fetching user: %v", err)
 			return
 		}
 
+		// Уменьшаем баланс пользователя
+		newBalance := user.Balance - payout.Amount
+		if newBalance < 0 {
+			log.Printf("Insufficient balance for payout request ID %d", payoutID)
+			msg := tgbotapi.NewMessage(chatID, "❌ Error: Insufficient balance to process the payout.")
+			bot.Send(msg)
+			return
+		}
+
+		err = h.services.ChangeBalance(user.TelegramID, newBalance)
+		if err != nil {
+			log.Printf("Error updating user balance: %v", err)
+			msg := tgbotapi.NewMessage(chatID, "❌ Error: Failed to update user balance.")
+			bot.Send(msg)
+			return
+		}
+
+		// Одобряем выплату
 		err = h.services.Payout.ApprovePayoutRequest(payoutID)
 		if err != nil {
 			log.Printf("Error approving payout: %v", err)
+			msg := tgbotapi.NewMessage(chatID, "❌ Error: Failed to approve payout.")
+			bot.Send(msg)
 			return
 		}
 
 		// Удаляем кнопки
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(groupID, messageID, tgbotapi.InlineKeyboardMarkup{})
-		bot.Send(editMarkup)
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
 
+		// Уведомляем пользователя об успешной выплате
 		h.NotifyPayout(bot, user, payout.Amount, true)
+
+	} else if strings.HasPrefix(data, "reject_payout_") {
+		parts := strings.Split(data, "_")
+		payoutID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
+
+		// Получаем информацию о выплате
+		payout, err := h.services.Payout.GetPayoutByID(payoutID)
+		if err != nil {
+			log.Printf("Error fetching payout for payout ID %d: %v", payoutID, err)
+			return
+		}
+
+		// Отклоняем выплату
+		err = h.services.Payout.RejectPayoutRequest(payoutID)
+		if err != nil {
+			log.Printf("Error rejecting payout: %v", err)
+			return
+		}
+
+		// Удаляем кнопки
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
+
+		// Уведомляем пользователя об отклонении выплаты
+		user, err := h.services.GetUserById(payout.TelegramID)
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			return
+		}
+		h.NotifyPayout(bot, user, payout.Amount, false)
 
 	} else if strings.HasPrefix(data, "reject_payout_") {
 		parts := strings.Split(data, "_")
@@ -821,9 +907,17 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		// Удаляем кнопки
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(groupID, messageID, tgbotapi.InlineKeyboardMarkup{})
-		bot.Send(editMarkup)
+		// Удаляем кнопки, передавая пустую клавиатуру
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
 
 		h.NotifyPayout(bot, user, payout.Amount, false)
 	} else {

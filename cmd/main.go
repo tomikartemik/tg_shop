@@ -35,15 +35,6 @@ func main() {
 	premiumService := service.NewPremiumService(premiumRepo)
 	premiumHandler := handler.NewPremiumHandler(premiumService, bot)
 
-	go func() {
-		for {
-			time.Sleep(24 * time.Hour)
-			premiumHandler.NotifyPremiumUsers()
-		}
-	}()
-
-	select {}
-
 	//cron.InitCron(bot, repos.User)
 
 	go internal.BotProcess(handlers, bot)
@@ -53,6 +44,15 @@ func main() {
 	if err := srv.Run(os.Getenv("PORT"), handlers.InitRoutes()); err != nil {
 		logrus.Fatalf("error occured while running server %s", err.Error())
 	}
+
+	go func() {
+		for {
+			premiumHandler.NotifyPremiumUsers()
+			time.Sleep(24 * time.Hour)
+		}
+	}()
+
+	select {}
 
 	//go utils.StartEarningProcessor(services.Earning)
 	//go utils.StartCheckPremiums(services.Premium)
