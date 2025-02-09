@@ -40,17 +40,17 @@ func main() {
 	go internal.BotProcess(handlers, bot)
 	go internal.AdmBotProcess(adm_handlers)
 
-	srv := new(internal.Server)
-	if err := srv.Run(os.Getenv("PORT"), handlers.InitRoutes()); err != nil {
-		logrus.Fatalf("error occured while running server %s", err.Error())
-	}
-
 	go func() {
 		for {
 			premiumHandler.NotifyPremiumUsers()
 			time.Sleep(10 * time.Second)
 		}
 	}()
+
+	srv := new(internal.Server)
+	if err := srv.Run(os.Getenv("PORT"), handlers.InitRoutes()); err != nil {
+		logrus.Fatalf("error occured while running server %s", err.Error())
+	}
 
 	select {}
 
