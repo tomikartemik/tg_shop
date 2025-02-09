@@ -132,6 +132,7 @@ func (s *CryptoCloudService) ChangeStatus(idStr string, status string) error {
 	}
 
 	message := fmt.Sprintf("🎉 Your balance has been successfully topped up by %.2f$. New balance: %.2f$", invoice.Amount, newBalance)
+
 	msg := tgbotapi.NewMessage(int64(user.TelegramID), message)
 	if _, err := s.bot.Send(msg); err != nil {
 		log.Printf("Failed to send notification to user %d: %v", user.TelegramID, err)

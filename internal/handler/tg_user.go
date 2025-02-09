@@ -296,6 +296,7 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Top-up operation has been canceled.")
 			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 			bot.Send(msg)
+			h.sendMainMenu(bot, update.Message.Chat.ID)
 			return
 		}
 
@@ -327,6 +328,7 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		msg.ParseMode = "Markdown"
 		msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 		bot.Send(msg)
+		h.sendMainMenu(bot, update.Message.Chat.ID)
 	} else {
 		h.HandleKeyboardButton(bot, update, messageText)
 	}
