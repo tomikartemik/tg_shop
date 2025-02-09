@@ -21,7 +21,7 @@ func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 		User:        NewUserService(repos.User, repos.Ad, repos.Category, bot),
 		Ad:          NewAdService(repos.Ad, repos.User, repos.Category),
 		Category:    NewCategoryService(repos.Category),
-		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice),
+		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice, bot),
 		Payout:      NewPayoutService(repos.Payout),
 		Earning:     NewEarningService(repos.Earning, repos.User),
 		Premium:     NewPremiumService(repos.Premium),

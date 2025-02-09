@@ -821,7 +821,6 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		// Одобряем выплату
 		err = h.services.Payout.ApprovePayoutRequest(payoutID)
 		if err != nil {
 			log.Printf("Error approving payout: %v", err)

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -32,14 +34,16 @@ type InvoiceResponse struct {
 type CryptoCloudService struct {
 	repoUser    repository.User
 	repoInvoice repository.Invoice
+	bot         *tgbotapi.BotAPI
 }
 
-func NewCryptoCloudService(repoUser repository.User, repoInvoice repository.Invoice) *CryptoCloudService {
+func NewCryptoCloudService(repoUser repository.User, repoInvoice repository.Invoice, bot *tgbotapi.BotAPI) *CryptoCloudService {
 	apiToken = os.Getenv("API_TOKEN")
 	shopID = os.Getenv("SHOP_ID")
 	return &CryptoCloudService{
 		repoUser:    repoUser,
 		repoInvoice: repoInvoice,
+		bot:         bot,
 	}
 }
 
@@ -82,18 +86,15 @@ func (s *CryptoCloudService) CreateInvoice(amount float64, telegramID int) (stri
 	}
 	defer resp.Body.Close()
 
-	// Проверяем статус ответа
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to create invoice: status code %d", resp.StatusCode)
 	}
 
-	// Декодируем ответ
 	var response InvoiceResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	// Проверка, есть ли данные в ответе
 	if response.Status != "success" {
 		return "", fmt.Errorf("failed to create invoice: status is %s", response.Status)
 	}
@@ -129,5 +130,12 @@ func (s *CryptoCloudService) ChangeStatus(idStr string, status string) error {
 	if err != nil {
 		return err
 	}
+
+	message := fmt.Sprintf("🎉 Your balance has been successfully topped up by %.2f$. New balance: %.2f$", invoice.Amount, newBalance)
+	msg := tgbotapi.NewMessage(int64(user.TelegramID), message)
+	if _, err := s.bot.Send(msg); err != nil {
+		log.Printf("Failed to send notification to user %d: %v", user.TelegramID, err)
+	}
+
 	return nil
 }
