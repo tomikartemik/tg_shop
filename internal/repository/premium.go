@@ -2,6 +2,7 @@ package repository
 
 import (
 	"gorm.io/gorm"
+	"log"
 	"tg_shop/internal/model"
 	"time"
 )
@@ -40,20 +41,14 @@ func (repo *PremiumRepository) GetExpiredPremiums() ([]model.User, []model.User,
 }
 
 func (repo *PremiumRepository) ResetPremiums(users []model.User) error {
-	var userIDs []int
 	for _, user := range users {
-		userIDs = append(userIDs, user.TelegramID)
-	}
-
-	if len(userIDs) > 0 {
 		err := repo.db.Model(&model.User{}).
-			Where("telegram_id IN ?", userIDs).
+			Where("telegram_id = ?", user.TelegramID).
 			Update("is_premium", false).
 			Error
 		if err != nil {
-			return err
+			log.Println(err)
 		}
 	}
-
 	return nil
 }

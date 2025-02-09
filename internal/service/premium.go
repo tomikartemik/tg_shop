@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log"
 	"tg_shop/internal/model"
 	"tg_shop/internal/repository"
@@ -32,6 +33,6 @@ func (s *PremiumService) GetPremiumInfo() ([]model.User, []model.User, error) {
 		}
 		log.Printf("✅ Отключен премиум у %d пользователей", len(expired))
 	}
-
+	fmt.Println(expiresInThreeDays, expired)
 	return expiresInThreeDays, expired, nil
 }

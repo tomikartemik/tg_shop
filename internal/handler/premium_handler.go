@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"tg_shop/internal/service"
@@ -19,6 +20,7 @@ func NewPremiumHandler(service *service.PremiumService, bot *tgbotapi.BotAPI) *P
 }
 
 func (h *PremiumHandler) NotifyPremiumUsers() {
+	fmt.Println("handler premium users")
 	expiresInThreeDays, expired, err := h.service.GetPremiumInfo()
 	if err != nil {
 		log.Printf("Error retrieving premium information: %v", err)
