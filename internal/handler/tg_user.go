@@ -486,6 +486,13 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 
 	switch state {
 	case "creating_ad_title":
+		if len(messageText) > 100 {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "The title is too long. Please enter a title with a maximum of 100 characters.")
+			msg.ReplyMarkup = getExitKeyboard()
+			bot.Send(msg)
+			return
+		}
+
 		h.tempAdData[telegramID] = model.Ad{Title: messageText}
 		h.userStates[telegramID] = "creating_ad_description"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the description for your ad:")
@@ -493,6 +500,13 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		bot.Send(msg)
 
 	case "creating_ad_description":
+		if len(messageText) > 700 {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "The description is too long. Please enter a description with a maximum of 700 characters.")
+			msg.ReplyMarkup = getExitKeyboard()
+			bot.Send(msg)
+			return
+		}
+
 		ad := h.tempAdData[telegramID]
 		ad.Description = messageText
 		h.tempAdData[telegramID] = ad
