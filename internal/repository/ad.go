@@ -118,3 +118,31 @@ func (repo *AdRepository) GetAdByIDTg(adID int) (model.Ad, error) {
 	err := repo.db.Where("id = ?", adID).First(&ad).Error
 	return ad, err
 }
+
+func (repo *AdRepository) DisableExcessAds(userID int) error {
+	var adIDs []int
+
+	err := repo.db.Model(&model.Ad{}).
+		Select("id").
+		Where("seller_id = ? AND status = ? AND stock > 0", userID, "Enabled").
+		Order("id").
+		Limit(3).
+		Find(&adIDs).
+		Error
+
+	if err != nil {
+		return err
+	}
+
+	return repo.db.Model(&model.Ad{}).
+		Where("seller_id = ? AND status = ? AND stock > 0 AND id NOT IN ?", userID, "Enabled", adIDs).
+		Update("status", "Disabled").
+		Error
+}
+
+func (repo *AdRepository) EnableAllDisabledAds(userID int) error {
+	return repo.db.Model(&model.Ad{}).
+		Where("seller_id = ? AND status = ? AND stock > 0", userID, "Disabled").
+		Update("status", "Enabled").
+		Error
+}

@@ -51,6 +51,8 @@ type Ad interface {
 	ChangeStock(adID, newStock int) error
 	UpdateAdStatus(adID int, status string) error
 	GetAdByIDTg(id int) (model.Ad, error)
+	DisableExcessAds(userID int) error
+	EnableAllDisabledAds(userID int) error
 }
 
 type Category interface {
