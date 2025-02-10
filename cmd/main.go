@@ -9,6 +9,7 @@ import (
 	"tg_shop/internal/handler"
 	"tg_shop/internal/repository"
 	"tg_shop/internal/service"
+	"tg_shop/utils"
 	"time"
 )
 
@@ -47,6 +48,8 @@ func main() {
 		}
 	}()
 
+	go utils.StartEarningProcessor(services.Earning)
+
 	srv := new(internal.Server)
 	if err := srv.Run(os.Getenv("PORT"), handlers.InitRoutes()); err != nil {
 		logrus.Fatalf("error occured while running server %s", err.Error())
@@ -54,7 +57,6 @@ func main() {
 
 	select {}
 
-	//go utils.StartEarningProcessor(services.Earning)
 	//go utils.StartCheckPremiums(services.Premium)
 
 	if err != nil {

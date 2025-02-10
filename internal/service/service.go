@@ -18,7 +18,7 @@ type Service struct {
 
 func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 	return &Service{
-		User:        NewUserService(repos.User, repos.Ad, repos.Category, bot),
+		User:        NewUserService(repos.User, repos.Ad, repos.Category, repos.Earning, bot),
 		Ad:          NewAdService(repos.Ad, repos.User, repos.Category),
 		Category:    NewCategoryService(repos.Category),
 		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice, bot),

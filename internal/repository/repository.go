@@ -73,6 +73,8 @@ type Payout interface {
 type Earning interface {
 	GetUnprocessedEarnings() ([]model.Earning, error)
 	MarkAsProcessed(earning *model.Earning) error
+	CreateEarning(newEarning model.Earning) error
+	CountEarningsById(telegramID int) (int, error)
 }
 
 type Premium interface {

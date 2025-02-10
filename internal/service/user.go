@@ -18,14 +18,16 @@ type UserService struct {
 	repo         repository.User
 	repoAd       repository.Ad
 	repoCategory repository.Category
+	repoEarning  repository.Earning
 	bot          *tgbotapi.BotAPI
 }
 
-func NewUserService(repo repository.User, repoAd repository.Ad, repoCategory repository.Category, bot *tgbotapi.BotAPI) *UserService {
+func NewUserService(repo repository.User, repoAd repository.Ad, repoCategory repository.Category, repoEarning repository.Earning, bot *tgbotapi.BotAPI) *UserService {
 	return &UserService{
 		repo:         repo,
 		repoAd:       repoAd,
 		repoCategory: repoCategory,
+		repoEarning:  repoEarning,
 		bot:          bot,
 	}
 }
@@ -286,10 +288,46 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 		return err
 	}
 
-	sellerNewHoldBalance := seller.HoldBalance + ad.Price
+	var priceForSeller float64
+
+	if seller.IsPremium == true {
+		priceForSeller = ad.Price * 0.95
+	} else {
+		salesCount, err := s.repoEarning.CountEarningsById(seller.TelegramID)
+
+		if err != nil {
+			return err
+		}
+
+		switch {
+		case salesCount >= 40:
+			priceForSeller = ad.Price * 0.94
+		case salesCount >= 10:
+			priceForSeller = ad.Price * 0.93
+		default:
+			priceForSeller = ad.Price * 0.92
+		}
+	}
+
+	priceForSeller = (priceForSeller * 100) / 100
+
+	sellerNewHoldBalance := seller.HoldBalance + priceForSeller
 	buyerNewBalance := buyer.Balance - ad.Price
 
 	if err = s.repo.ChangeHoldBalance(seller.TelegramID, sellerNewHoldBalance); err != nil {
+		return err
+	}
+
+	newEarning := model.Earning{
+		SellerID: seller.TelegramID,
+		BuyerID:  buyer.TelegramID,
+		Amount:   priceForSeller,
+		Status:   "Processing",
+	}
+
+	err = s.repoEarning.CreateEarning(newEarning)
+
+	if err != nil {
 		return err
 	}
 
