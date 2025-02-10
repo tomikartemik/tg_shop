@@ -689,7 +689,6 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		if messageText == "✅ Confirm" {
 			ad := h.tempAdData[telegramID]
 			ad.SellerID = int(telegramID)
-			ad.Approved = false
 			createdAd, err := h.services.Ad.CreateAd(ad)
 			if err != nil {
 				log.Printf("Error creating ad: %v", err)
