@@ -10,7 +10,7 @@ type Ad struct {
 	CategoryID  int     `gorm:"not null" json:"category_id"`
 	SellerID    int     `gorm:"not null" json:"seller_id"`
 	Stock       int     `gorm:"not null" json:"stock"`
-	Approved    bool    `gorm:"default:false"`
+	Status      string  `gorm:"default:rejected"`
 }
 
 type AdInfo struct {

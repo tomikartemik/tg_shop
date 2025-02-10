@@ -49,7 +49,7 @@ type Ad interface {
 	UpdateAd(ad model.Ad) (model.Ad, error)
 	DeleteAd(adID int) error // Добавляем метод удаления
 	ChangeStock(adID, newStock int) error
-	UpdateAdStatus(id int, b bool) error
+	UpdateAdStatus(adID int, status string) error
 	GetAdByIDTg(id int) (model.Ad, error)
 }
 

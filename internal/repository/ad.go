@@ -24,7 +24,7 @@ func (repo *AdRepository) CreateAd(ad model.Ad) (model.Ad, error) {
 
 func (repo *AdRepository) GetAllAds() ([]model.Ad, error) {
 	var ads []model.Ad
-	err := repo.db.Where("approved = ? AND stock > 0", true).Find(&ads).Error
+	err := repo.db.Where("status = ? AND stock > 0", "Enabled").Find(&ads).Error
 	if err != nil {
 		return ads, err
 	}
@@ -33,7 +33,7 @@ func (repo *AdRepository) GetAllAds() ([]model.Ad, error) {
 
 func (repo *AdRepository) GetAdListByCategory(categoryID int) ([]model.Ad, error) {
 	var ads []model.Ad
-	err := repo.db.Where("category_id = ? AND approved = ? AND stock > 0", categoryID, true).Find(&ads).Error
+	err := repo.db.Where("category_id = ? AND status = ? AND stock > 0", categoryID, "Enabled").Find(&ads).Error
 	//err := repo.db.Model(model.Ad{}).Find(&ads).Error
 	if err != nil {
 		return []model.Ad{}, err
@@ -103,8 +103,8 @@ func (repo *AdRepository) ChangeStock(adID, newStock int) error {
 	return nil
 }
 
-func (repo *AdRepository) UpdateAdStatus(adID int, approved bool) error {
-	return repo.db.Model(&model.Ad{}).Where("id = ?", adID).Update("approved", approved).Error
+func (repo *AdRepository) UpdateAdStatus(adID int, status string) error {
+	return repo.db.Model(&model.Ad{}).Where("id = ?", adID).Update("status", status).Error
 }
 
 func (repo *AdRepository) GetAdByID(adID int) (model.Ad, error) {

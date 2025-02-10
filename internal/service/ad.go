@@ -22,8 +22,6 @@ func NewAdService(repo repository.Ad, repoUser repository.User, repoCategory rep
 }
 
 func (s *AdService) CreateAd(ad model.Ad) (model.Ad, error) {
-	ad.Approved = false
-
 	createdAd, err := s.repo.CreateAd(ad)
 	if err != nil {
 		return model.Ad{}, err
@@ -200,11 +198,11 @@ func (s *AdService) convertAdsToAdsShortInfo(ads []model.Ad) ([]model.AdShortInf
 }
 
 func (s *AdService) ApproveAd(adID int) error {
-	return s.repo.UpdateAdStatus(adID, true)
+	return s.repo.UpdateAdStatus(adID, "Enabled")
 }
 
 func (s *AdService) RejectAd(adID int) error {
-	return s.repo.UpdateAdStatus(adID, false)
+	return s.repo.UpdateAdStatus(adID, "Rejected")
 }
 
 func (s *AdService) GetAdByIDTg(adID int) (model.Ad, error) {
