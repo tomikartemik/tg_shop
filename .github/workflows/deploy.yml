@@ -20,4 +20,4 @@ jobs:
 
       - name: Deploy to server
         run: |
-          ssh -o StrictHostKeyChecking=no github@81.19.139.191 'bash -s' < deploy.sh
+          ssh -o StrictHostKeyChecking=no github@94.228.126.228 'bash -s' < deploy.sh
