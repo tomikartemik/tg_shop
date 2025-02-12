@@ -7,12 +7,14 @@ import (
 )
 
 type PremiumService struct {
-	repo repository.Premium
+	repo   repository.Premium
+	repoAd repository.Ad
 }
 
-func NewPremiumService(repo repository.Premium) *PremiumService {
+func NewPremiumService(repo repository.Premium, repoAd repository.Ad) *PremiumService {
 	return &PremiumService{
-		repo: repo,
+		repo:   repo,
+		repoAd: repoAd,
 	}
 }
 
@@ -31,6 +33,13 @@ func (s *PremiumService) GetPremiumInfo() ([]model.User, []model.User, error) {
 			return nil, nil, err
 		}
 		log.Printf("✅ Отключен премиум у %d пользователей", len(expired))
+
+		for _, user := range expired {
+			err := s.repoAd.DisableExcessAds(user.TelegramID)
+			if err != nil {
+				log.Printf("Ошибка при отключении лишних объявлений у пользователя %d: %v", user.TelegramID, err)
+			}
+		}
 	}
 	return expiresInThreeDays, expired, nil
 }

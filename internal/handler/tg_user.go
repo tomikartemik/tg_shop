@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"io"
@@ -411,18 +410,50 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		}
 
 	case "💎 Premium":
-		context.TODO()
+		msgText := "Want to extend or purchase Premium? Contact the admin to get all the details and benefits!"
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Contact Admin", "https://t.me/Luc1ferTheDevil"), // Замени на реальную ссылку
+			),
+		)
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, msgText)
+		msg.ReplyMarkup = keyboard
+
+		bot.Send(msg)
 	case "❗️Important":
 		url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
+		url_2 := "https://telegra.ph/Controversial-situations-Help-12-30"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click the button below to view important information.")
 		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
+				tgbotapi.NewInlineKeyboardButtonURL("📘 Controversial situations", url_2),
 			),
 		)
 		bot.Send(msg)
 	case "🆘 Support":
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Support account not added.")
+		msgText := "If you have any questions or problems, our team is always ready to help you. You can contact the admin or the support to get the support you need. Also, if you have ideas or suggestions on how to improve our bot, we would love to hear them!\n\nPlease choose one of the following options:"
+
+		// Создаём кнопки
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Contact Admin", "https://t.me/Luc1ferTheDevil"), // Ссылка на админа
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Contact Support", "https://t.me/hspquick"), // Ссылка на поддержку
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Suggest an Idea", "https://t.me/Luc1ferTheDevil"), // Ссылка для идей
+			),
+		)
+
+		// Формируем сообщение
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, msgText)
+		msg.ReplyMarkup = keyboard
+
+		// Отправляем
 		bot.Send(msg)
 	case "📄 Our channels":
 		messageText := "Would be delighted if you check out our other projects listed below\\!\n\n" +

@@ -33,7 +33,8 @@ func main() {
 	handlers := handler.NewHandler(services)
 	adm_handlers := handler.NewAdminHandler(services)
 	premiumRepo := repository.NewPremiumRepository(db)
-	premiumService := service.NewPremiumService(premiumRepo)
+	repoAd := repository.NewAdRepository(db)
+	premiumService := service.NewPremiumService(premiumRepo, repoAd)
 	premiumHandler := handler.NewPremiumHandler(premiumService, bot)
 
 	//cron.InitCron(bot, repos.User)
@@ -44,7 +45,8 @@ func main() {
 	go func() {
 		for {
 			premiumHandler.NotifyPremiumUsers()
-			time.Sleep(12 * time.Hour)
+			time.Sleep(10 * time.Second)
+			//time.Sleep(12 * time.Hour)
 		}
 	}()
 

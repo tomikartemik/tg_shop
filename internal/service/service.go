@@ -24,7 +24,7 @@ func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice, bot),
 		Payout:      NewPayoutService(repos.Payout),
 		Earning:     NewEarningService(repos.Earning, repos.User),
-		Premium:     NewPremiumService(repos.Premium),
+		Premium:     NewPremiumService(repos.Premium, repos.Ad),
 	}
 }
 

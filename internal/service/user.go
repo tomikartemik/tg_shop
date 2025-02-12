@@ -199,7 +199,7 @@ func (s *UserService) GrantPremium(userID int) error {
 		return fmt.Errorf("failed to grant premium: %w", updateErr)
 	}
 
-	return nil
+	return s.repoAd.EnableAllDisabledAds(userID)
 }
 
 func (s *UserService) ChangeBalance(userID int, newBalance float64) error {
