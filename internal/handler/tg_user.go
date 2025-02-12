@@ -110,6 +110,16 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 		return
 	} else if h.userStates[telegramID] == "requesting_payout" {
+		// Если пользователь нажал "Отмена"
+		if strings.TrimSpace(messageText) == "❌ Cancel" {
+			delete(h.userStates, telegramID)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Payout operation has been canceled.")
+			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+			bot.Send(msg)
+			h.sendMainMenu(bot, update.Message.Chat.ID)
+			return
+		}
+
 		amount, err := strconv.ParseFloat(messageText, 64)
 		if err != nil || amount <= 0 {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid amount. Please enter a positive number.")
@@ -153,15 +163,27 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		_ = messageID
 
-		// Если messageID нам не нужен прямо сейчас, но его нужно вернуть из функции
-
 		delete(h.userStates, telegramID)
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your payout request has been submitted for moderation.")
 		bot.Send(msg)
 	} else if h.userStates[telegramID] == "uploading_avatar" {
+		// Если пользователь нажал "Пропустить"
+		if strings.TrimSpace(messageText) == "✅ Skip" {
+			delete(h.userStates, telegramID)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Profile picture upload skipped. Your profile has been created.")
+			bot.Send(msg)
+			h.sendMainMenu(bot, update.Message.Chat.ID)
+			return
+		}
+
 		if update.Message.Photo == nil {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo.")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo or press 'Skip'.")
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("✅ Skip"),
+				),
+			)
 			bot.Send(msg)
 			return
 		}
@@ -223,7 +245,6 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		delete(h.userStates, update.Message.From.ID)
 		h.sendMainMenu(bot, update.Message.Chat.ID)
-
 	} else if h.userStates[telegramID] == "changing_photo" {
 		if update.Message.Photo == nil {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo.")

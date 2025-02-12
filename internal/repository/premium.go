@@ -21,7 +21,7 @@ func (repo *PremiumRepository) GetExpiredPremiums() ([]model.User, []model.User,
 	now := time.Now()
 
 	// Получаем пользователей, у которых премиум истекает через 3 дня
-	err := repo.db.Where("expire_premium BETWEEN ? AND ? AND is_premium = TRUE", now, now.Add(72*time.Hour)).
+	err := repo.db.Where("expire_premium BETWEEN ? AND ? AND is_premium = TRUE", now.Add(71*time.Hour), now.Add(72*time.Hour)).
 		Order("expire_premium ASC").
 		Find(&expiresInThreeDays).
 		Error
