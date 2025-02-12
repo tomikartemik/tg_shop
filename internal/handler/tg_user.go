@@ -1009,13 +1009,17 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			}
 
 			msg := tgbotapi.NewMessage(chatID, fmt.Sprintf(
-				"Your balance: %.2f$\nEnter the amount you want to withdraw:",
+				"Your balance: %.2f$\nEnter the amount you want to withdraw or press 'Cancel':",
 				user.Balance,
 			))
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("❌ Cancel"),
+				),
+			)
 			bot.Send(msg)
 
 			h.userStates[callbackQuery.From.ID] = "requesting_payout"
-
 		case "change_name":
 			msg := tgbotapi.NewMessage(chatID, "Please enter your new name:")
 			bot.Send(msg)
