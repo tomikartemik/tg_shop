@@ -76,7 +76,12 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		h.userStates[telegramID] = "uploading_avatar"
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your name is saved. Please upload a profile picture:")
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your name is saved. Please upload a profile picture or press 'Skip':")
+		msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+			tgbotapi.NewKeyboardButtonRow(
+				tgbotapi.NewKeyboardButton("✅ Skip"),
+			),
+		)
 		bot.Send(msg)
 		return
 	} else if h.userStates[telegramID] == "changing_name" {
