@@ -168,7 +168,7 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your payout request has been submitted for moderation.")
 		bot.Send(msg)
 	} else if h.userStates[telegramID] == "uploading_avatar" {
-		// Если пользователь нажал "Пропустить"
+		// Если пользователь нажал "Skip"
 		if strings.TrimSpace(messageText) == "✅ Skip" {
 			delete(h.userStates, telegramID)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Profile picture upload skipped. Your profile has been created.")
