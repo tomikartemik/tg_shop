@@ -345,14 +345,18 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		// Clear user state
 		delete(h.userStates, telegramID)
 
-		// Send the payment link to the user
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
-			"An invoice for %.2f has been created. Please use the following link to complete the payment: [Pay Now](%s)",
-			amount, link,
-		))
-		msg.ParseMode = "Markdown"
-		msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+		// Create an inline button with the payment link
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("💳 Pay Now", link),
+			),
+		)
+
+		// Send the payment button to the user
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("An invoice for %.2f has been created. Click the button below to complete the payment.", amount))
+		msg.ReplyMarkup = keyboard
 		bot.Send(msg)
+
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 	} else {
 		h.HandleKeyboardButton(bot, update, messageText)
