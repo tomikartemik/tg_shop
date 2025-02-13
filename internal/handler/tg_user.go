@@ -391,14 +391,18 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			premiumStatus = fmt.Sprintf("✅ Active until %s", user.ExpirePremium.Format("02 Jan 2006"))
 		}
 
+		// Экранируем текст
+		escapedUsername := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, user.Username)
+		escapedPremiumStatus := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, premiumStatus)
+
 		profileMessage := fmt.Sprintf(
 			"👤 *Your Profile:*\n"+
-				"Id: %d\n"+
-				"Name: %s\n"+
-				"Balance: %.2f$\n"+
-				"Rating: %.2f\n"+
-				"Premium: %s",
-			user.TelegramID, user.Username, user.Balance, user.Rating, premiumStatus,
+				"Id: `%d`\n"+
+				"Name: `%s`\n"+
+				"Balance: `%.2f$`\n"+
+				"Rating: `%.2f`\n"+
+				"Premium: `%s`",
+			user.TelegramID, escapedUsername, user.Balance, user.Rating, escapedPremiumStatus,
 		)
 
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -419,7 +423,7 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		if user.PhotoURL == "" {
 			log.Printf("User %d has no avatar. Sending profile without photo.", user.TelegramID)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, profileMessage)
-			msg.ParseMode = "Markdown"
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
 			msg.ReplyMarkup = keyboard
 			bot.Send(msg)
 			return
@@ -427,14 +431,14 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 
 		photoMsg := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FilePath(user.PhotoURL))
 		photoMsg.Caption = profileMessage
-		photoMsg.ParseMode = "Markdown"
+		photoMsg.ParseMode = tgbotapi.ModeMarkdownV2
 		photoMsg.ReplyMarkup = keyboard
 
 		log.Printf("Sending profile with photo: %s", user.PhotoURL)
 		if _, err := bot.Send(photoMsg); err != nil {
 			log.Printf("Error sending profile photo: %v", err)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load your avatar. Here is your profile information.")
-			msg.ParseMode = "Markdown"
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
 			msg.Text = profileMessage
 			bot.Send(msg)
 		}
