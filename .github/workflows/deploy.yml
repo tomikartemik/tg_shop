@@ -19,5 +19,7 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Deploy to server
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
         run: |
-          ssh -o StrictHostKeyChecking=no github@94.228.126.228 'bash -s' < deploy.sh
+          ssh -o StrictHostKeyChecking=no github@${{ secrets.SERVER_IP }} 'bash -s' < deploy.sh
