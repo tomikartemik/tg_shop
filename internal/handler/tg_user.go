@@ -1007,8 +1007,18 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 				return
 			}
 
-			startCommand := tgbotapi.NewMessage(chatID, "/start")
-			bot.Send(startCommand)
+			update := tgbotapi.Update{
+				Message: &tgbotapi.Message{
+					Chat: &tgbotapi.Chat{
+						ID: chatID,
+					},
+					From: &tgbotapi.User{
+						ID: telegramID,
+					},
+					Text: "/start",
+				},
+			}
+			h.HandleStart(bot, update)
 			return
 		case "add_balance":
 			h.userStates[callbackQuery.From.ID] = "adding_balance"
