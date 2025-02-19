@@ -71,7 +71,7 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	defer file.Close()
 
 	// Создаем объект для отправки видео
-	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FileReader{Name: "video.mp4", Reader: file})
+	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FileReader{Name: "start.mp4", Reader: file})
 
 	// Отправляем видео
 	_, err = bot.Send(video)
