@@ -18,3 +18,7 @@ func NewCategoryService(repo repository.Category) *CategoryService {
 func (s *CategoryService) GetCategoryList() ([]model.Category, error) {
 	return s.repo.GetCategoryList()
 }
+
+func (s *CategoryService) GetCategoryById(categoryID int) (model.Category, error) {
+	return s.repo.GetCategoryById(categoryID)
+}

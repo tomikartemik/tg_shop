@@ -16,6 +16,25 @@ import (
 func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
 
+	channelChatID := int64(2262695419)
+	member, err := bot.GetChatMember(tgbotapi.GetChatMemberConfig{
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
+			ChatID: channelChatID,
+			UserID: telegramID,
+		},
+	})
+
+	if err != nil || (member.Status != "member" && member.Status != "administrator" && member.Status != "creator") {
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please subscribe to our channel to use the bot.")
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Subscribe", fmt.Sprintf("https://t.me/%s", "+GtMFfelO1ko1ZWIy")), // Замените на username вашего канала
+			),
+		)
+		bot.Send(msg)
+		return
+	}
+
 	existingUser, err := h.services.GetUserInfoById(int(telegramID))
 	if err == nil {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
@@ -34,18 +53,20 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		return
 	}
 
+	// Отправка видео
+	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FilePath("video/start.mp4"))
+	video.Caption = "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law."
 	url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law.")
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+	video.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
 		),
 	)
-	bot.Send(msg)
+	bot.Send(video)
 
 	h.userStates[telegramID] = "username"
 
-	msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your name:")
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your name:")
 	bot.Send(msg)
 }
 
@@ -963,42 +984,6 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 		}
 		h.NotifyPayout(bot, user, payout.Amount, false)
 
-	} else if strings.HasPrefix(data, "reject_payout_") {
-		parts := strings.Split(data, "_")
-		payoutID, _ := strconv.Atoi(parts[2])
-		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
-
-		payout, err := h.services.Payout.GetPayoutByID(payoutID)
-		if err != nil {
-			log.Printf("Error fetching payout for payout ID %d: %v", payoutID, err)
-			return
-		}
-
-		user, err := h.services.GetUserById(payout.TelegramID)
-		if err != nil {
-			log.Printf("Error fetching user: %v", err)
-			return
-		}
-
-		err = h.services.Payout.RejectPayoutRequest(payoutID)
-		if err != nil {
-			log.Printf("Error rejecting payout: %v", err)
-			return
-		}
-
-		// Удаляем кнопки, передавая пустую клавиатуру
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
-		}
-
-		h.NotifyPayout(bot, user, payout.Amount, false)
 	} else {
 		switch data {
 		case "add_balance":
@@ -1131,15 +1116,21 @@ func downloadFileFromTg(bot *tgbotapi.BotAPI, fileID string) ([]byte, error) {
 }
 
 func (h *Handler) SendAdToModeration(bot *tgbotapi.BotAPI, ad model.Ad, moderationGroupID int64) (int, error) {
+	category, err := h.services.Category.GetCategoryById(ad.CategoryID)
+	if err != nil {
+		log.Printf("Error fetching category: %v", err)
+		return 0, err
+	}
+
 	messageText := fmt.Sprintf(
 		"📢 *Ad for Moderation:*\n"+
 			"**Title:** %s\n"+
 			"**Description:** %s\n"+
 			"**Price:** %.2f$\n"+
 			"**Stock:** %d\n"+
-			"**Category:** %d\n"+
+			"**Category:** %s\n"+
 			"**Seller:** %d\n",
-		ad.Title, ad.Description, ad.Price, ad.Stock, ad.CategoryID, ad.SellerID,
+		ad.Title, ad.Description, ad.Price, ad.Stock, category.Name, ad.SellerID,
 	)
 
 	photo := tgbotapi.NewPhoto(moderationGroupID, tgbotapi.FilePath(ad.PhotoURL))

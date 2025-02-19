@@ -60,6 +60,7 @@ type Ad interface {
 
 type Category interface {
 	GetCategoryList() ([]model.Category, error)
+	GetCategoryById(id int) (model.Category, error)
 }
 
 type CryptoCloud interface {
