@@ -315,7 +315,7 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		// Сохраняем видео на сервер
 		fileName := fmt.Sprintf("%d_video.mp4", update.Message.From.ID)
-		filePath, err := utils.SaveFile(videoData, fileName, "./uploads/videos")
+		filePath, err := utils.SaveFile(videoData, fileName, "./uploads")
 		if err != nil {
 			log.Printf("Error saving video: %v", err)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to save the video. Try again.")
