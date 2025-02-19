@@ -64,7 +64,7 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	//)
 	//bot.Send(video)
 
-	file, err := os.Open(".video/start.mp4")
+	file, err := os.Open("./video")
 	if err != nil {
 		log.Panic(err)
 	}
