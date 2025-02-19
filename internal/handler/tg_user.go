@@ -790,15 +790,18 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 			delete(h.tempAdData, telegramID)
 			delete(h.userStates, telegramID)
 			moderationGroupID, _ := strconv.ParseInt(os.Getenv("GROUP_MODERATION_ID"), 10, 64)
+			ourGroupID, _ := strconv.ParseInt(os.Getenv("OUR_GROUP"), 10, 64)
 			messageID, err := h.SendAdToModeration(bot, createdAd, moderationGroupID)
+			messageID2, err2 := h.SendAdToOurGroup(bot, createdAd, ourGroupID)
 			if err != nil {
 				log.Printf("Error sending ad to moderation group: %v", err)
 			}
-			if err != nil {
-				log.Printf("Error sending ad to moderation group: %v", err)
+			if err2 != nil {
+				log.Printf("Error sending ad to our group: %v", err)
 			}
 
 			_ = messageID
+			_ = messageID2
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
 				"Your ad '%s' has been submitted for moderation. Ad ID: %d",
 				createdAd.Title, createdAd.ID,
@@ -1179,6 +1182,34 @@ func (h *Handler) SendAdToModeration(bot *tgbotapi.BotAPI, ad model.Ad, moderati
 	)
 
 	photo.ReplyMarkup = keyboard
+	sentMsg, err := bot.Send(photo)
+	if err != nil {
+		return 0, err
+	}
+
+	return sentMsg.MessageID, nil
+}
+
+func (h *Handler) SendAdToOurGroup(bot *tgbotapi.BotAPI, ad model.Ad, moderationGroupID int64) (int, error) {
+	category, err := h.services.Category.GetCategoryById(ad.CategoryID)
+	if err != nil {
+		log.Printf("Error fetching category: %v", err)
+		return 0, err
+	}
+
+	messageText := fmt.Sprintf(
+		"📢 *Ad for Moderation:*\n"+
+			"**Title:** %s\n"+
+			"**Description:** %s\n"+
+			"**Price:** %.2f$\n"+
+			"**Stock:** %d\n"+
+			"**Category:** %s\n"+
+			"**Seller:** %d\n",
+		ad.Title, ad.Description, ad.Price, ad.Stock, category.Name, ad.SellerID,
+	)
+
+	photo := tgbotapi.NewPhoto(moderationGroupID, tgbotapi.FilePath(ad.PhotoURL))
+	photo.Caption = messageText
 	sentMsg, err := bot.Send(photo)
 	if err != nil {
 		return 0, err
