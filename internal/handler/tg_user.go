@@ -28,13 +28,17 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please subscribe to our channel to use the bot.")
 		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL("Subscribe", fmt.Sprintf("https://t.me/%s", "+GtMFfelO1ko1ZWIy")), // Замените на username вашего канала
+				tgbotapi.NewInlineKeyboardButtonURL("Subscribe", fmt.Sprintf("https://t.me/%s", "+GtMFfelO1ko1ZWIy")),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("I am subscribed", "i_am_subscribed"),
 			),
 		)
 		bot.Send(msg)
 		return
 	}
 
+	// Остальная логика после проверки подписки...
 	existingUser, err := h.services.GetUserInfoById(int(telegramID))
 	if err == nil {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
@@ -986,6 +990,26 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 
 	} else {
 		switch data {
+		case "i_am_subscribed":
+			telegramID := callbackQuery.From.ID
+
+			channelChatID := int64(-1002262695419)
+			member, err := bot.GetChatMember(tgbotapi.GetChatMemberConfig{
+				ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
+					ChatID: channelChatID,
+					UserID: telegramID,
+				},
+			})
+
+			if err != nil || (member.Status != "member" && member.Status != "administrator" && member.Status != "creator") {
+				msg := tgbotapi.NewMessage(chatID, "You are not subscribed yet. Please subscribe to the channel.")
+				bot.Send(msg)
+				return
+			}
+
+			startCommand := tgbotapi.NewMessage(chatID, "/start")
+			bot.Send(startCommand)
+			return
 		case "add_balance":
 			h.userStates[callbackQuery.From.ID] = "adding_balance"
 
