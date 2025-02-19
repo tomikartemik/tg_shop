@@ -1210,6 +1210,7 @@ func (h *Handler) SendAdToOurGroup(bot *tgbotapi.BotAPI, ad model.Ad, moderation
 
 	photo := tgbotapi.NewPhoto(moderationGroupID, tgbotapi.FilePath(ad.PhotoURL))
 	photo.Caption = messageText
+	photo.ParseMode = "Markdown"
 	sentMsg, err := bot.Send(photo)
 	if err != nil {
 		return 0, err
