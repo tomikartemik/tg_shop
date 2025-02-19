@@ -54,7 +54,7 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	}
 
 	// Отправка видео
-	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FilePath(".video/start.mp4"))
+	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FilePath("./uploads/start.mp4"))
 	video.Caption = "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law."
 	url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
 	video.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -194,81 +194,17 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your payout request has been submitted for moderation.")
 		bot.Send(msg)
 	} else if h.userStates[telegramID] == "uploading_avatar" {
-		//// Если пользователь нажал "Skip"
-		//if strings.TrimSpace(messageText) == "✅ Skip" {
-		//	delete(h.userStates, telegramID)
-		//	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Profile picture upload skipped. Your profile has been created.")
-		//	bot.Send(msg)
-		//	h.sendMainMenu(bot, update.Message.Chat.ID)
-		//	return
-		//}
-		//
-		//if update.Message.Photo == nil {
-		//	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo or press 'Skip'.")
-		//	msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
-		//		tgbotapi.NewKeyboardButtonRow(
-		//			tgbotapi.NewKeyboardButton("✅ Skip"),
-		//		),
-		//	)
-		//	bot.Send(msg)
-		//	return
-		//}
-		//
-		//photo := update.Message.Photo[len(update.Message.Photo)-1]
-		//
-		//fileConfig := tgbotapi.FileConfig{FileID: photo.FileID}
-		//file, err := bot.GetFile(fileConfig)
-		//if err != nil {
-		//	log.Printf("Failed to get file from Telegram: %v", err)
-		//	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
-		//	bot.Send(msg)
-		//	return
-		//}
-		//
-		//url := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", bot.Token, file.FilePath)
-		//
-		//response, err := http.Get(url)
-		//if err != nil {
-		//	log.Printf("Failed to download file: %v", err)
-		//	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
-		//	bot.Send(msg)
-		//	return
-		//}
-		//defer response.Body.Close()
-		//
-		//fileData, err := io.ReadAll(response.Body)
-		//if err != nil {
-		//	log.Printf("Failed to read file data: %v", err)
-		//	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
-		//	bot.Send(msg)
-		//	return
-		//}
-		//
-		//fileName := fmt.Sprintf("%d_avatar.jpg", update.Message.From.ID)
-		//filePath, err := utils.SaveFile(fileData, fileName, "./uploads")
-		//if err != nil {
-		//	log.Printf("Error saving photo: %v", err)
-		//	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to save the photo. Try again.")
-		//	bot.Send(msg)
-		//	return
-		//}
-		//
-		//updatedUser := model.User{
-		//	TelegramID: int(update.Message.From.ID),
-		//	PhotoURL:   filePath,
-		//}
-
+		// Если пользователь нажал "Skip"
 		if strings.TrimSpace(messageText) == "✅ Skip" {
 			delete(h.userStates, telegramID)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Video upload skipped. Your profile has been created.")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Profile picture upload skipped. Your profile has been created.")
 			bot.Send(msg)
 			h.sendMainMenu(bot, update.Message.Chat.ID)
 			return
 		}
 
-		// Проверяем, есть ли видео в сообщении
-		if update.Message.Video == nil {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid video or press 'Skip'.")
+		if update.Message.Photo == nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo or press 'Skip'.")
 			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
 				tgbotapi.NewKeyboardButtonRow(
 					tgbotapi.NewKeyboardButton("✅ Skip"),
@@ -278,55 +214,48 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 			return
 		}
 
-		// Получаем видео из сообщения
-		video := update.Message.Video
+		photo := update.Message.Photo[len(update.Message.Photo)-1]
 
-		// Получаем file_id видео
-		fileConfig := tgbotapi.FileConfig{FileID: video.FileID}
+		fileConfig := tgbotapi.FileConfig{FileID: photo.FileID}
 		file, err := bot.GetFile(fileConfig)
 		if err != nil {
 			log.Printf("Failed to get file from Telegram: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the video. Try again.")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
 			bot.Send(msg)
 			return
 		}
 
-		// Формируем URL для скачивания видео
 		url := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", bot.Token, file.FilePath)
 
-		// Скачиваем видео
 		response, err := http.Get(url)
 		if err != nil {
 			log.Printf("Failed to download file: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to download the video. Try again.")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
 			bot.Send(msg)
 			return
 		}
 		defer response.Body.Close()
 
-		// Читаем данные видео
-		videoData, err := io.ReadAll(response.Body)
+		fileData, err := io.ReadAll(response.Body)
 		if err != nil {
-			log.Printf("Failed to read video data: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the video. Try again.")
+			log.Printf("Failed to read file data: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to process the photo. Try again.")
 			bot.Send(msg)
 			return
 		}
 
-		// Сохраняем видео на сервер
-		fileName := fmt.Sprintf("%d_video.mp4", update.Message.From.ID)
-		filePath, err := utils.SaveFile(videoData, fileName, "./uploads")
+		fileName := fmt.Sprintf("%d_avatar.jpg", update.Message.From.ID)
+		filePath, err := utils.SaveFile(fileData, fileName, "./uploads")
 		if err != nil {
-			log.Printf("Error saving video: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to save the video. Try again.")
+			log.Printf("Error saving photo: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to save the photo. Try again.")
 			bot.Send(msg)
 			return
 		}
 
-		// Обновляем данные пользователя (если нужно)
 		updatedUser := model.User{
 			TelegramID: int(update.Message.From.ID),
-			PhotoURL:   filePath, // Сохраняем путь к видео
+			PhotoURL:   filePath,
 		}
 
 		_, err = h.services.CreateOrUpdateUser(updatedUser)
