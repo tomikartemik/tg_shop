@@ -54,35 +54,55 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	}
 
 	// Отправка видео
-	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FilePath("./video/start.mp4"))
-	video.Caption = "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law."
-	url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
-	video.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
-		),
-	)
-	bot.Send(video)
+	//video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FilePath("./video/start.mp4"))
+	//video.Caption = "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law."
+	//url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
+	//video.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+	//	tgbotapi.NewInlineKeyboardRow(
+	//		tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
+	//	),
+	//)
+	//bot.Send(video)
 
-	//file, err := os.Open("./video")
-	//if err != nil {
-	//	log.Panic(err)
-	//}
-	//defer file.Close()
-	//
-	//// Создаем объект для отправки видео
-	//video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FileReader{Name: "start.mp4", Reader: file})
-	//
-	//// Отправляем видео
-	//_, err = bot.Send(video)
-	//if err != nil {
-	//	log.Panic(err)
-	//}
+	file, err := os.Open("./video/start.mp4")
+	if err != nil {
+		log.Panic(err)
+	}
+	defer file.Close()
+
+	// Создаем объект для отправки видео
+	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FileReader{Name: "video.mp4", Reader: file})
+
+	// Отправляем видео и получаем ответ
+	messg, err := bot.Send(video)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	// Сохраняем file_id для будущего использования
+	fileID := messg.Video.FileID
+	log.Printf("Video uploaded successfully! File ID: %s", fileID)
+
+	// Теперь можно использовать file_id для отправки видео
+	sendVideoByFileID(bot, update.Message.Chat.ID, fileID)
 
 	h.userStates[telegramID] = "username"
 
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your name:")
 	bot.Send(msg)
+
+}
+
+func sendVideoByFileID(bot *tgbotapi.BotAPI, chatID int64, fileID string) {
+	video := tgbotapi.NewVideo(chatID, tgbotapi.FileID(fileID))
+	video.Caption = "Это видео отправлено по file_id"
+
+	_, err := bot.Send(video)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	log.Println("Video sent using file_id!")
 }
 
 func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
