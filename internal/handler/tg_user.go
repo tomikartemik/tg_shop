@@ -74,6 +74,457 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	bot.Send(msg)
 }
 
+func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Update, messageText string) {
+	state, exists := h.userStates[update.Message.From.ID]
+	if exists && strings.HasPrefix(state, "creating_ad") {
+		h.handleAdCreation(bot, update, state, messageText)
+		return
+	}
+
+	switch messageText {
+	case "📝 Create Ad":
+		h.userStates[update.Message.From.ID] = "creating_ad_title"
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the title for your ad:")
+		msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+			tgbotapi.NewKeyboardButtonRow(
+				tgbotapi.NewKeyboardButton("❌ Cancel"),
+			),
+		)
+		bot.Send(msg)
+	case "👤 Profile":
+		log.Printf("In switch: %s", messageText)
+
+		user, err := h.services.GetUserById(int(update.Message.From.ID))
+		if err != nil {
+			log.Printf("Error fetching user profile: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Error loading your profile.")
+			bot.Send(msg)
+			return
+		}
+
+		premiumStatus := "❌ Not Active"
+		if user.IsPremium {
+			premiumStatus = fmt.Sprintf("✅ Active until %s", user.ExpirePremium.Format("02 Jan 2006"))
+		}
+
+		escapedUsername := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, user.Username)
+		escapedPremiumStatus := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, premiumStatus)
+
+		profileMessage := fmt.Sprintf(
+			"👤 *Your Profile:*\n"+
+				"Id: `%d`\n"+
+				"Name: `%s`\n"+
+				"Balance: `%.2f$`\n"+
+				"Rating: `%.2f`\n"+
+				"Premium: `%s`",
+			user.TelegramID, escapedUsername, user.Balance, user.Rating, escapedPremiumStatus,
+		)
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("📈 Add Balance", "add_balance"),
+				tgbotapi.NewInlineKeyboardButtonData("📉 Request Payout", "request_payout"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("✏️ Change Name", "change_name"),
+				tgbotapi.NewInlineKeyboardButtonData("📄 My Ads", "my_ads"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("🖼️ Change Photo", "change_photo"),
+				tgbotapi.NewInlineKeyboardButtonData("📦My orders", "my_orders"),
+			),
+		)
+
+		if user.PhotoURL == "" {
+			log.Printf("User %d has no avatar. Sending profile without photo.", user.TelegramID)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, profileMessage)
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+			msg.ReplyMarkup = keyboard
+			bot.Send(msg)
+			return
+		}
+
+		photoMsg := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FilePath(user.PhotoURL))
+		photoMsg.Caption = profileMessage
+		photoMsg.ParseMode = tgbotapi.ModeMarkdownV2
+		photoMsg.ReplyMarkup = keyboard
+
+		log.Printf("Sending profile with photo: %s", user.PhotoURL)
+		if _, err := bot.Send(photoMsg); err != nil {
+			log.Printf("Error sending profile photo: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load your avatar. Here is your profile information.")
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+			msg.Text = profileMessage
+			bot.Send(msg)
+		}
+
+	case "💎 Premium":
+		user, err := h.services.GetUserById(int(update.Message.From.ID))
+		if err != nil {
+			log.Printf("Error fetching user profile: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Error loading your profile.")
+			bot.Send(msg)
+			return
+		}
+		msgText := ""
+		if user.IsPremium {
+			premiumStatus := fmt.Sprintf("✅ Active until %s", user.ExpirePremium.Format("02 Jan 2006"))
+			msgText = fmt.Sprintf(
+				"Your Premium: %s", premiumStatus,
+			)
+		} else {
+			msgText = "Want to extend or purchase Premium? Contact the admin to get all the details and benefits!"
+		}
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Contact Admin", "https://t.me/Luc1ferTheDevil"),
+				tgbotapi.NewInlineKeyboardButtonURL("❗️Terms of Premium", "https://telegra.ph/PREMIUM-02-20-3"),
+			),
+		)
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, msgText)
+		msg.ReplyMarkup = keyboard
+
+		bot.Send(msg)
+	case "❗️Important":
+		url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
+		url_2 := "https://telegra.ph/Controversial-situations-Help-12-30"
+		url_3 := "https://telegra.ph/User-Agreement-02-20-7"
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click the button below to view important information.")
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
+				tgbotapi.NewInlineKeyboardButtonURL("📘 Controversial situations", url_2),
+				tgbotapi.NewInlineKeyboardButtonData("📘User Agreement", url_3),
+			),
+		)
+		bot.Send(msg)
+	case "🆘 Support":
+		msgText := "If you have any questions or problems, our team is always ready to help you. You can contact the admin or the support to get the support you need. Also, if you have ideas or suggestions on how to improve our bot, we would love to hear them!\n\nPlease choose one of the following options:"
+
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Contact Admin", "https://t.me/Luc1ferTheDevil"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Contact Support", "https://t.me/hspquick"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL("Suggest an Idea", "https://t.me/Luc1ferTheDevil"),
+			),
+		)
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, msgText)
+		msg.ReplyMarkup = keyboard
+
+		bot.Send(msg)
+	case "📄 Our channels":
+		messageText := "Would be delighted if you check out our other projects listed below\\!\n\n" +
+			"❗️All titles are clickable\\!\n\n" +
+			"🔺 [HELL REFUND MAIN](https://t.me/\\+VtUPiZtDuX9hYTQy)\n\n" +
+			"🔺 [HELL REFUND BACKUP](https://t.me/\\+ZOU4LSpBvwc5ZmRi)\n\n" +
+			"🔺 [HELL REFUND CHAT](https://t.me/\\+3xhos0cIhTNhYmZi)\n\n" +
+			"🔺 [HELL BOXING](https://t.me/\\+X9-Ql8LQVDYyYmI6)\n\n" +
+			"🔺 [HELL CHECKIP BOT](https://t.me/hellcheckip_bot)"
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, messageText)
+		msg.ParseMode = "MarkdownV2"
+
+		bot.Send(msg)
+	default:
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Command not recognized.")
+		bot.Send(msg)
+	}
+}
+
+func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbotapi.CallbackQuery) {
+	data := callbackQuery.Data
+	chatID := callbackQuery.Message.Chat.ID
+	messageID := callbackQuery.Message.MessageID
+
+	if strings.HasPrefix(data, "approve_ad_") {
+		parts := strings.Split(data, "_")
+		adID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
+
+		if err := h.services.Ad.ApproveAd(adID); err != nil {
+			log.Printf("Failed to approve ad: %s", err)
+			return
+		}
+
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
+
+		ad, err := h.services.Ad.GetAdByIDTg(adID)
+		if err == nil {
+			h.NotifyUser(bot, ad.SellerID, ad, true)
+		}
+
+	} else if strings.HasPrefix(data, "reject_ad_") {
+		parts := strings.Split(data, "_")
+		adID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
+
+		if err := h.services.Ad.RejectAd(adID); err != nil {
+			log.Printf("Failed to reject ad: %s", err)
+			return
+		}
+
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
+
+		ad, err := h.services.Ad.GetAdByIDTg(adID)
+		if err == nil {
+			h.NotifyUser(bot, ad.SellerID, ad, false)
+		}
+
+	} else if strings.HasPrefix(data, "approve_payout_") {
+		parts := strings.Split(data, "_")
+		payoutID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
+
+		payout, err := h.services.Payout.GetPayoutByID(payoutID)
+		if err != nil {
+			log.Printf("Error fetching payout for payoutID %d: %v", payoutID, err)
+			return
+		}
+
+		user, err := h.services.GetUserById(payout.TelegramID)
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			return
+		}
+
+		newBalance := user.Balance - payout.Amount
+		if newBalance < 0 {
+			log.Printf("Insufficient balance for payout request ID %d", payoutID)
+			msg := tgbotapi.NewMessage(chatID, "❌ Error: Insufficient balance to process the payout.")
+			bot.Send(msg)
+			return
+		}
+
+		err = h.services.ChangeBalance(user.TelegramID, newBalance)
+		if err != nil {
+			log.Printf("Error updating user balance: %v", err)
+			msg := tgbotapi.NewMessage(chatID, "❌ Error: Failed to update user balance.")
+			bot.Send(msg)
+			return
+		}
+
+		err = h.services.Payout.ApprovePayoutRequest(payoutID)
+		if err != nil {
+			log.Printf("Error approving payout: %v", err)
+			msg := tgbotapi.NewMessage(chatID, "❌ Error: Failed to approve payout.")
+			bot.Send(msg)
+			return
+		}
+
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
+
+		h.NotifyPayout(bot, user, payout.Amount, true)
+
+	} else if strings.HasPrefix(data, "reject_payout_") {
+		parts := strings.Split(data, "_")
+		payoutID, _ := strconv.Atoi(parts[2])
+		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
+
+		payout, err := h.services.Payout.GetPayoutByID(payoutID)
+		if err != nil {
+			log.Printf("Error fetching payout for payout ID %d: %v", payoutID, err)
+			return
+		}
+
+		err = h.services.Payout.RejectPayoutRequest(payoutID)
+		if err != nil {
+			log.Printf("Error rejecting payout: %v", err)
+			return
+		}
+
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
+
+		user, err := h.services.GetUserById(payout.TelegramID)
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			return
+		}
+		h.NotifyPayout(bot, user, payout.Amount, false)
+
+	} else {
+		switch data {
+		case "i_am_subscribed":
+			telegramID := callbackQuery.From.ID
+
+			channelChatID := int64(-1002262695419)
+			member, err := bot.GetChatMember(tgbotapi.GetChatMemberConfig{
+				ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
+					ChatID: channelChatID,
+					UserID: telegramID,
+				},
+			})
+
+			if err != nil || (member.Status != "member" && member.Status != "administrator" && member.Status != "creator") {
+				msg := tgbotapi.NewMessage(chatID, "You are not subscribed yet. Please subscribe to the channel.")
+				bot.Send(msg)
+				return
+			}
+
+			update := tgbotapi.Update{
+				Message: &tgbotapi.Message{
+					Chat: &tgbotapi.Chat{
+						ID: chatID,
+					},
+					From: &tgbotapi.User{
+						ID: telegramID,
+					},
+					Text: "/start",
+				},
+			}
+			h.HandleStart(bot, update)
+			return
+		case "add_balance":
+			h.userStates[callbackQuery.From.ID] = "adding_balance"
+
+			msg := tgbotapi.NewMessage(chatID, "Enter the amount to top up or press 'Cancel':")
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("❌ Cancel"),
+				),
+			)
+			bot.Send(msg)
+
+		case "request_payout":
+			user, err := h.services.GetUserById(int(callbackQuery.From.ID))
+			if err != nil {
+				log.Printf("Error fetching user: %v", err)
+				msg := tgbotapi.NewMessage(chatID, "Failed to load your profile. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			msg := tgbotapi.NewMessage(chatID, fmt.Sprintf(
+				"Your balance: %.2f$\nMinimum withdrawal amount: $50\nEnter the amount you want to withdraw or press 'Cancel':",
+				user.Balance,
+			))
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("❌ Cancel"),
+				),
+			)
+			bot.Send(msg)
+
+			h.userStates[callbackQuery.From.ID] = "requesting_payout"
+		case "change_name":
+			msg := tgbotapi.NewMessage(chatID, "Please enter your new name:")
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("❌ Cancel"),
+				),
+			)
+			bot.Send(msg)
+			h.userStates[callbackQuery.From.ID] = "changing_name"
+
+		case "my_ads":
+			ads, err := h.services.Ad.GetAdsByUserID(int(callbackQuery.From.ID))
+			if err != nil {
+				msg := tgbotapi.NewMessage(chatID, "Error loading your ads. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			if len(ads) == 0 {
+				msg := tgbotapi.NewMessage(chatID, "You have no ads.")
+				bot.Send(msg)
+				return
+			}
+
+			adsMessage := "📄 *Your Ads:*\n"
+			for _, ad := range ads {
+				adsMessage += fmt.Sprintf(
+					"ID: %d\nTitle: %s\nPrice: %.2f$\nStock: %d\n\n",
+					ad.ID, ad.Title, ad.Price, ad.Stock,
+				)
+			}
+
+			msg := tgbotapi.NewMessage(chatID, adsMessage)
+			msg.ParseMode = "Markdown"
+			bot.Send(msg)
+
+		case "my_orders":
+			user, err := h.services.GetUserById(int(callbackQuery.From.ID))
+			if err != nil {
+				log.Printf("Error fetching user orders: %v", err)
+				msg := tgbotapi.NewMessage(chatID, "Error loading your orders. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			if len(user.Purchased) == 0 {
+				msg := tgbotapi.NewMessage(chatID, "You have no purchases.")
+				bot.Send(msg)
+				return
+			}
+
+			ordersMessage := "🛒 *Your Orders:*\n"
+			for _, ad := range user.Purchased {
+				ordersMessage += fmt.Sprintf(
+					"\n*Title:* %s\n*Price:* %.2f\n*Description:* %s\n\n",
+					ad.Title, ad.Price, ad.Description,
+				)
+			}
+
+			msg := tgbotapi.NewMessage(chatID, ordersMessage)
+			msg.ParseMode = "Markdown"
+			bot.Send(msg)
+		case "change_photo":
+			msg := tgbotapi.NewMessage(chatID, "Please upload your new profile picture:")
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("❌ Cancel"),
+				),
+			)
+			bot.Send(msg)
+			h.userStates[callbackQuery.From.ID] = "changing_photo"
+		default:
+			msg := tgbotapi.NewMessage(chatID, "Unknown action.")
+			bot.Send(msg)
+		}
+	}
+}
+
 func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
 	messageText := strings.TrimSpace(update.Message.Text)
@@ -157,6 +608,13 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 			return
 		}
 
+		// Проверка на минимальную сумму вывода
+		if amount < 50 {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Minimum withdrawal amount is $50.")
+			bot.Send(msg)
+			return
+		}
+
 		user, err := h.services.GetUserById(int(telegramID))
 		if err != nil {
 			log.Printf("Error fetching user: %v", err)
@@ -167,6 +625,13 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		if amount > user.Balance {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Insufficient balance.")
+			bot.Send(msg)
+			return
+		}
+
+		// Проверка на минимальный баланс
+		if user.Balance < 50 {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your balance is less than the minimum withdrawal amount of $50.")
 			bot.Send(msg)
 			return
 		}
@@ -385,167 +850,6 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 	} else {
 		h.HandleKeyboardButton(bot, update, messageText)
-	}
-}
-
-func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Update, messageText string) {
-	state, exists := h.userStates[update.Message.From.ID]
-	if exists && strings.HasPrefix(state, "creating_ad") {
-		h.handleAdCreation(bot, update, state, messageText)
-		return
-	}
-
-	switch messageText {
-	case "📝 Create Ad":
-		h.userStates[update.Message.From.ID] = "creating_ad_title"
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the title for your ad:")
-		bot.Send(msg)
-	case "👤 Profile":
-		log.Printf("In switch: %s", messageText)
-
-		user, err := h.services.GetUserById(int(update.Message.From.ID))
-		if err != nil {
-			log.Printf("Error fetching user profile: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Error loading your profile.")
-			bot.Send(msg)
-			return
-		}
-
-		premiumStatus := "❌ Not Active"
-		if user.IsPremium {
-			premiumStatus = fmt.Sprintf("✅ Active until %s", user.ExpirePremium.Format("02 Jan 2006"))
-		}
-
-		// Экранируем текст
-		escapedUsername := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, user.Username)
-		escapedPremiumStatus := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, premiumStatus)
-
-		profileMessage := fmt.Sprintf(
-			"👤 *Your Profile:*\n"+
-				"Id: `%d`\n"+
-				"Name: `%s`\n"+
-				"Balance: `%.2f$`\n"+
-				"Rating: `%.2f`\n"+
-				"Premium: `%s`",
-			user.TelegramID, escapedUsername, user.Balance, user.Rating, escapedPremiumStatus,
-		)
-
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("📈 Add Balance", "add_balance"),
-				tgbotapi.NewInlineKeyboardButtonData("📉 Request Payout", "request_payout"),
-			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("✏️ Change Name", "change_name"),
-				tgbotapi.NewInlineKeyboardButtonData("📄 My Ads", "my_ads"),
-			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("🖼️ Change Photo", "change_photo"),
-				tgbotapi.NewInlineKeyboardButtonData("📦My orders", "my_orders"),
-			),
-		)
-
-		if user.PhotoURL == "" {
-			log.Printf("User %d has no avatar. Sending profile without photo.", user.TelegramID)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, profileMessage)
-			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			msg.ReplyMarkup = keyboard
-			bot.Send(msg)
-			return
-		}
-
-		photoMsg := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FilePath(user.PhotoURL))
-		photoMsg.Caption = profileMessage
-		photoMsg.ParseMode = tgbotapi.ModeMarkdownV2
-		photoMsg.ReplyMarkup = keyboard
-
-		log.Printf("Sending profile with photo: %s", user.PhotoURL)
-		if _, err := bot.Send(photoMsg); err != nil {
-			log.Printf("Error sending profile photo: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load your avatar. Here is your profile information.")
-			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			msg.Text = profileMessage
-			bot.Send(msg)
-		}
-
-	case "💎 Premium":
-
-		user, err := h.services.GetUserById(int(update.Message.From.ID))
-		if err != nil {
-			log.Printf("Error fetching user profile: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Error loading your profile.")
-			bot.Send(msg)
-			return
-		}
-		msgText := ""
-		if user.IsPremium {
-			premiumStatus := fmt.Sprintf("✅ Active until %s", user.ExpirePremium.Format("02 Jan 2006"))
-			msgText = fmt.Sprintf(
-				"Your Premium: %s", premiumStatus,
-			)
-		} else {
-			msgText = "Want to extend or purchase Premium? Contact the admin to get all the details and benefits!"
-		}
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL("Contact Admin", "https://t.me/Luc1ferTheDevil"),
-				tgbotapi.NewInlineKeyboardButtonURL("❗️Terms of Premium", "https://telegra.ph/PREMIUM-02-20-3"),
-			),
-		)
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, msgText)
-		msg.ReplyMarkup = keyboard
-
-		bot.Send(msg)
-	case "❗️Important":
-		url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
-		url_2 := "https://telegra.ph/Controversial-situations-Help-12-30"
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click the button below to view important information.")
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
-				tgbotapi.NewInlineKeyboardButtonURL("📘 Controversial situations", url_2),
-			),
-		)
-		bot.Send(msg)
-	case "🆘 Support":
-		msgText := "If you have any questions or problems, our team is always ready to help you. You can contact the admin or the support to get the support you need. Also, if you have ideas or suggestions on how to improve our bot, we would love to hear them!\n\nPlease choose one of the following options:"
-
-		// Создаём кнопки
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL("Contact Admin", "https://t.me/Luc1ferTheDevil"), // Ссылка на админа
-			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL("Contact Support", "https://t.me/hspquick"), // Ссылка на поддержку
-			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL("Suggest an Idea", "https://t.me/Luc1ferTheDevil"), // Ссылка для идей
-			),
-		)
-
-		// Формируем сообщение
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, msgText)
-		msg.ReplyMarkup = keyboard
-
-		// Отправляем
-		bot.Send(msg)
-	case "📄 Our channels":
-		messageText := "Would be delighted if you check out our other projects listed below\\!\n\n" +
-			"❗️All titles are clickable\\!\n\n" +
-			"🔺 [HELL REFUND MAIN](https://t.me/\\+VtUPiZtDuX9hYTQy)\n\n" +
-			"🔺 [HELL REFUND BACKUP](https://t.me/\\+ZOU4LSpBvwc5ZmRi)\n\n" +
-			"🔺 [HELL REFUND CHAT](https://t.me/\\+3xhos0cIhTNhYmZi)\n\n" +
-			"🔺 [HELL BOXING](https://t.me/\\+X9-Ql8LQVDYyYmI6)\n\n" +
-			"🔺 [HELL CHECKIP BOT](https://t.me/hellcheckip_bot)"
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, messageText)
-		msg.ParseMode = "MarkdownV2"
-
-		bot.Send(msg)
-	default:
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Command not recognized.")
-		bot.Send(msg)
 	}
 }
 
@@ -845,297 +1149,6 @@ func getAdCreationButtons(state string) tgbotapi.ReplyKeyboardMarkup {
 		)
 	default:
 		return tgbotapi.NewReplyKeyboard()
-	}
-}
-
-func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbotapi.CallbackQuery) {
-	data := callbackQuery.Data
-	chatID := callbackQuery.Message.Chat.ID
-	messageID := callbackQuery.Message.MessageID
-
-	if strings.HasPrefix(data, "approve_ad_") {
-		parts := strings.Split(data, "_")
-		adID, _ := strconv.Atoi(parts[2])
-		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
-
-		if err := h.services.Ad.ApproveAd(adID); err != nil {
-			log.Printf("Failed to approve ad: %s", err)
-			return
-		}
-
-		// Удаляем кнопки, передавая пустую клавиатуру
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
-		}
-
-		// Уведомляем продавца
-		ad, err := h.services.Ad.GetAdByIDTg(adID)
-		if err == nil {
-			h.NotifyUser(bot, ad.SellerID, ad, true)
-		}
-
-	} else if strings.HasPrefix(data, "reject_ad_") {
-		parts := strings.Split(data, "_")
-		adID, _ := strconv.Atoi(parts[2])
-		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
-
-		if err := h.services.Ad.RejectAd(adID); err != nil {
-			log.Printf("Failed to reject ad: %s", err)
-			return
-		}
-
-		// Удаляем кнопки, передавая пустую клавиатуру
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
-		}
-
-		// Уведомляем продавца
-		ad, err := h.services.Ad.GetAdByIDTg(adID)
-		if err == nil {
-			h.NotifyUser(bot, ad.SellerID, ad, false)
-		}
-
-	} else if strings.HasPrefix(data, "approve_payout_") {
-		parts := strings.Split(data, "_")
-		payoutID, _ := strconv.Atoi(parts[2])
-		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
-
-		// Получаем информацию о выплате
-		payout, err := h.services.Payout.GetPayoutByID(payoutID)
-		if err != nil {
-			log.Printf("Error fetching payout for payoutID %d: %v", payoutID, err)
-			return
-		}
-
-		// Получаем информацию о пользователе
-		user, err := h.services.GetUserById(payout.TelegramID)
-		if err != nil {
-			log.Printf("Error fetching user: %v", err)
-			return
-		}
-
-		// Уменьшаем баланс пользователя
-		newBalance := user.Balance - payout.Amount
-		if newBalance < 0 {
-			log.Printf("Insufficient balance for payout request ID %d", payoutID)
-			msg := tgbotapi.NewMessage(chatID, "❌ Error: Insufficient balance to process the payout.")
-			bot.Send(msg)
-			return
-		}
-
-		err = h.services.ChangeBalance(user.TelegramID, newBalance)
-		if err != nil {
-			log.Printf("Error updating user balance: %v", err)
-			msg := tgbotapi.NewMessage(chatID, "❌ Error: Failed to update user balance.")
-			bot.Send(msg)
-			return
-		}
-
-		err = h.services.Payout.ApprovePayoutRequest(payoutID)
-		if err != nil {
-			log.Printf("Error approving payout: %v", err)
-			msg := tgbotapi.NewMessage(chatID, "❌ Error: Failed to approve payout.")
-			bot.Send(msg)
-			return
-		}
-
-		// Удаляем кнопки
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
-		}
-
-		// Уведомляем пользователя об успешной выплате
-		h.NotifyPayout(bot, user, payout.Amount, true)
-
-	} else if strings.HasPrefix(data, "reject_payout_") {
-		parts := strings.Split(data, "_")
-		payoutID, _ := strconv.Atoi(parts[2])
-		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
-
-		// Получаем информацию о выплате
-		payout, err := h.services.Payout.GetPayoutByID(payoutID)
-		if err != nil {
-			log.Printf("Error fetching payout for payout ID %d: %v", payoutID, err)
-			return
-		}
-
-		// Отклоняем выплату
-		err = h.services.Payout.RejectPayoutRequest(payoutID)
-		if err != nil {
-			log.Printf("Error rejecting payout: %v", err)
-			return
-		}
-
-		// Удаляем кнопки
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
-		}
-
-		// Уведомляем пользователя об отклонении выплаты
-		user, err := h.services.GetUserById(payout.TelegramID)
-		if err != nil {
-			log.Printf("Error fetching user: %v", err)
-			return
-		}
-		h.NotifyPayout(bot, user, payout.Amount, false)
-
-	} else {
-		switch data {
-		case "i_am_subscribed":
-			telegramID := callbackQuery.From.ID
-
-			channelChatID := int64(-1002262695419)
-			member, err := bot.GetChatMember(tgbotapi.GetChatMemberConfig{
-				ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
-					ChatID: channelChatID,
-					UserID: telegramID,
-				},
-			})
-
-			if err != nil || (member.Status != "member" && member.Status != "administrator" && member.Status != "creator") {
-				msg := tgbotapi.NewMessage(chatID, "You are not subscribed yet. Please subscribe to the channel.")
-				bot.Send(msg)
-				return
-			}
-
-			update := tgbotapi.Update{
-				Message: &tgbotapi.Message{
-					Chat: &tgbotapi.Chat{
-						ID: chatID,
-					},
-					From: &tgbotapi.User{
-						ID: telegramID,
-					},
-					Text: "/start",
-				},
-			}
-			h.HandleStart(bot, update)
-			return
-		case "add_balance":
-			h.userStates[callbackQuery.From.ID] = "adding_balance"
-
-			msg := tgbotapi.NewMessage(chatID, "Enter the amount to top up or press 'Cancel':")
-			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
-				tgbotapi.NewKeyboardButtonRow(
-					tgbotapi.NewKeyboardButton("❌ Cancel"),
-				),
-			)
-			bot.Send(msg)
-
-		case "request_payout":
-			user, err := h.services.GetUserById(int(callbackQuery.From.ID))
-			if err != nil {
-				log.Printf("Error fetching user: %v", err)
-				msg := tgbotapi.NewMessage(chatID, "Failed to load your profile. Please try again later.")
-				bot.Send(msg)
-				return
-			}
-
-			msg := tgbotapi.NewMessage(chatID, fmt.Sprintf(
-				"Your balance: %.2f$\nEnter the amount you want to withdraw or press 'Cancel':",
-				user.Balance,
-			))
-			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
-				tgbotapi.NewKeyboardButtonRow(
-					tgbotapi.NewKeyboardButton("❌ Cancel"),
-				),
-			)
-			bot.Send(msg)
-
-			h.userStates[callbackQuery.From.ID] = "requesting_payout"
-		case "change_name":
-			msg := tgbotapi.NewMessage(chatID, "Please enter your new name:")
-			bot.Send(msg)
-			h.userStates[callbackQuery.From.ID] = "changing_name"
-
-		case "my_ads":
-			ads, err := h.services.Ad.GetAdsByUserID(int(callbackQuery.From.ID))
-			if err != nil {
-				msg := tgbotapi.NewMessage(chatID, "Error loading your ads. Please try again later.")
-				bot.Send(msg)
-				return
-			}
-
-			if len(ads) == 0 {
-				msg := tgbotapi.NewMessage(chatID, "You have no ads.")
-				bot.Send(msg)
-				return
-			}
-
-			adsMessage := "📄 *Your Ads:*\n"
-			for _, ad := range ads {
-				adsMessage += fmt.Sprintf(
-					"ID: %d\nTitle: %s\nPrice: %.2f$\nStock: %d\n\n",
-					ad.ID, ad.Title, ad.Price, ad.Stock,
-				)
-			}
-
-			msg := tgbotapi.NewMessage(chatID, adsMessage)
-			msg.ParseMode = "Markdown"
-			bot.Send(msg)
-
-		case "my_orders":
-			user, err := h.services.GetUserById(int(callbackQuery.From.ID))
-			if err != nil {
-				log.Printf("Error fetching user orders: %v", err)
-				msg := tgbotapi.NewMessage(chatID, "Error loading your orders. Please try again later.")
-				bot.Send(msg)
-				return
-			}
-
-			if len(user.Purchased) == 0 {
-				msg := tgbotapi.NewMessage(chatID, "You have no purchases.")
-				bot.Send(msg)
-				return
-			}
-
-			ordersMessage := "🛒 *Your Orders:*\n"
-			for _, ad := range user.Purchased {
-				ordersMessage += fmt.Sprintf(
-					"\n*Title:* %s\n*Price:* %.2f\n*Description:* %s\n\n",
-					ad.Title, ad.Price, ad.Description,
-				)
-			}
-
-			msg := tgbotapi.NewMessage(chatID, ordersMessage)
-			msg.ParseMode = "Markdown"
-			bot.Send(msg)
-		case "change_photo":
-			msg := tgbotapi.NewMessage(chatID, "Please upload your new profile picture:")
-			bot.Send(msg)
-			h.userStates[callbackQuery.From.ID] = "changing_photo"
-		default:
-			msg := tgbotapi.NewMessage(chatID, "Unknown action.")
-			bot.Send(msg)
-		}
 	}
 }
 
