@@ -563,7 +563,7 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 	} else if h.userStates[telegramID] == "changing_name" {
 		newName := messageText
 
-		if strings.TrimSpace(messageText) == "❌Cancel" {
+		if strings.TrimSpace(messageText) == "❌ Cancel" {
 			delete(h.userStates, telegramID)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Change name operation has been canceled.")
 			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
@@ -751,7 +751,7 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 	} else if h.userStates[telegramID] == "changing_photo" {
 
-		if strings.TrimSpace(messageText) == "❌Cancel" {
+		if strings.TrimSpace(messageText) == "❌ Cancel" {
 			delete(h.userStates, telegramID)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Change photo operation has been canceled.")
 			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
