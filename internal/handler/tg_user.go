@@ -87,7 +87,7 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the title for your ad:")
 		msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
-				tgbotapi.NewKeyboardButton("❌ Cancel"),
+				tgbotapi.NewKeyboardButton("❌ Exit"),
 			),
 		)
 		bot.Send(msg)
@@ -563,6 +563,15 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 	} else if h.userStates[telegramID] == "changing_name" {
 		newName := messageText
 
+		if strings.TrimSpace(messageText) == "❌Cancel" {
+			delete(h.userStates, telegramID)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Change name operation has been canceled.")
+			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+			bot.Send(msg)
+			h.sendMainMenu(bot, update.Message.Chat.ID)
+			return
+		}
+
 		if len(newName) == 0 {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Name cannot be empty. Please enter a valid name:")
 			bot.Send(msg)
@@ -741,6 +750,16 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		delete(h.userStates, update.Message.From.ID)
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 	} else if h.userStates[telegramID] == "changing_photo" {
+
+		if strings.TrimSpace(messageText) == "❌Cancel" {
+			delete(h.userStates, telegramID)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Change photo operation has been canceled.")
+			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+			bot.Send(msg)
+			h.sendMainMenu(bot, update.Message.Chat.ID)
+			return
+		}
+
 		if update.Message.Photo == nil {
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid photo.")
 			bot.Send(msg)
