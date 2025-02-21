@@ -481,7 +481,7 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		if user.IsPremium {
 			premiumStatus := fmt.Sprintf("✅ Active until %s", user.ExpirePremium.Format("02 Jan 2006"))
 			msgText = fmt.Sprintf(
-				"Your Premium: `%s`", premiumStatus,
+				"Your Premium: %s", premiumStatus,
 			)
 		} else {
 			msgText = "Want to extend or purchase Premium? Contact the admin to get all the details and benefits!"
