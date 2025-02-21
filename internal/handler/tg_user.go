@@ -469,11 +469,27 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 		}
 
 	case "💎 Premium":
-		msgText := "Want to extend or purchase Premium? Contact the admin to get all the details and benefits!"
 
+		user, err := h.services.GetUserById(int(update.Message.From.ID))
+		if err != nil {
+			log.Printf("Error fetching user profile: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Error loading your profile.")
+			bot.Send(msg)
+			return
+		}
+		msgText := ""
+		if user.IsPremium {
+			premiumStatus := fmt.Sprintf("✅ Active until %s", user.ExpirePremium.Format("02 Jan 2006"))
+			msgText = fmt.Sprintf(
+				"Your Premium: `%s`", premiumStatus,
+			)
+		} else {
+			msgText = "Want to extend or purchase Premium? Contact the admin to get all the details and benefits!"
+		}
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonURL("Contact Admin", "https://t.me/Luc1ferTheDevil"), // Замени на реальную ссылку
+				tgbotapi.NewInlineKeyboardButtonURL("Contact Admin", "https://t.me/Luc1ferTheDevil"),
+				tgbotapi.NewInlineKeyboardButtonURL("❗️Terms of Premium", "https://telegra.ph/PREMIUM-02-20-3"),
 			),
 		)
 
