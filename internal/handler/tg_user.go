@@ -195,7 +195,7 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
 				tgbotapi.NewInlineKeyboardButtonURL("📘 Controversial situations", url_2),
-				tgbotapi.NewInlineKeyboardButtonData("📘User Agreement", url_3),
+				tgbotapi.NewInlineKeyboardButtonURL("📘User Agreement", url_3),
 			),
 		)
 		bot.Send(msg)
