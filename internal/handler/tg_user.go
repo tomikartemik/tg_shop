@@ -961,17 +961,59 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		bot.Send(msg)
 
 	case "creating_ad_stock":
-		stock, err := strconv.Atoi(messageText)
-		if err != nil {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid stock. Please enter a numeric value:")
+		if messageText == "♾️ Unlimited" {
+			ad := h.tempAdData[telegramID]
+			ad.Stock = 9999999
+			h.tempAdData[telegramID] = ad
+			h.userStates[telegramID] = "creating_ad_category"
+
+			categories, err := h.services.Category.GetCategoryList()
+			if err != nil {
+				log.Printf("Error fetching categories: %v", err)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load categories. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			if len(categories) == 0 {
+				log.Println("No categories found.")
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "No categories available at the moment.")
+				bot.Send(msg)
+				return
+			}
+
+			var categoryList strings.Builder
+			categoryList.WriteString("📋 *Available Categories:*\n")
+			for _, category := range categories {
+				categoryList.WriteString(fmt.Sprintf("%d - %s\n", category.ID, category.Name))
+			}
+			categoryList.WriteString("\nPlease enter the ID of the category you want to choose:")
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, categoryList.String())
+			msg.ParseMode = "Markdown"
 			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
 		}
+
+		stock, err := strconv.Atoi(messageText)
+		if err != nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid stock. Please enter a numeric value or press '♾️ Неограниченное количество':")
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("♾️ Unlimited"),
+					tgbotapi.NewKeyboardButton("❌ Exit"),
+				),
+			)
+			bot.Send(msg)
+			return
+		}
+
 		ad := h.tempAdData[telegramID]
 		ad.Stock = stock
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_category"
+
 		categories, err := h.services.Category.GetCategoryList()
 		if err != nil {
 			log.Printf("Error fetching categories: %v", err)
