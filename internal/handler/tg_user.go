@@ -1204,6 +1204,7 @@ func getAdCreationButtons(state string) tgbotapi.ReplyKeyboardMarkup {
 		return tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
 				tgbotapi.NewKeyboardButton("✅ Skip"),
+				tgbotapi.NewKeyboardButton("❌ Exit"),
 			),
 		)
 	case "creating_ad_finish":
