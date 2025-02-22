@@ -50,7 +50,7 @@ type Ad interface {
 	GetAdList(categoryIDStr string) ([]model.AdShortInfo, error)
 	GetAdBySellerID(idStr string) (model.AdInfo, error)
 	CreateAd(ad model.Ad) (model.Ad, error)
-	GetAdsByUserID(userID int) ([]model.AdShortInfo, error)
+	GetAdsByUserID(userID int) ([]model.Ad, error)
 	GetAdByID(idStr string) (model.AdInfo, error)
 	EditAd(adID int, updatedAd model.Ad) error
 	DeleteAd(adID int) error

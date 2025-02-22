@@ -152,7 +152,7 @@ func (h *AdminHandler) handleUserSearch(bot *tgbotapi.BotAPI, chatID int64, user
 	if len(ads) > 0 {
 		userInfo += "\n\nUser Ads:"
 		for _, ad := range ads {
-			userInfo += fmt.Sprintf("\n- ID: %d, Title: %s, Price: %.2f", ad.ID, ad.Title, ad.Price)
+			userInfo += fmt.Sprintf("\n- ID: %d, Title: %s, Price: %.2f, Status: %s", ad.ID, ad.Title, ad.Price, ad.Status)
 		}
 	} else {
 		userInfo += "\n\nNo ads found for this user."

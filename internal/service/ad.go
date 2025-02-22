@@ -93,13 +93,13 @@ func (s *AdService) GetAdByID(idStr string) (model.AdInfo, error) {
 	return adInfo, nil
 }
 
-func (s *AdService) GetAdsByUserID(userID int) ([]model.AdShortInfo, error) {
+func (s *AdService) GetAdsByUserID(userID int) ([]model.Ad, error) {
 	ads, err := s.repo.GetAdsByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.convertAdsToAdsShortInfo(ads)
+	return ads, nil
 }
 
 func (s *AdService) EditAd(adID int, updatedAd model.Ad) error {
