@@ -114,10 +114,10 @@ func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Upd
 			"👤 *Your Profile:*\n"+
 				"Id: `%d`\n"+
 				"Name: `%s`\n"+
-				"Balance: `%.2f$`\n"+
+				"Balance: `%.2f$ (%.2f$)`\n"+
 				"Rating: `%.2f`\n"+
 				"Premium: `%s`",
-			user.TelegramID, escapedUsername, user.Balance, user.Rating, escapedPremiumStatus,
+			user.TelegramID, escapedUsername, user.Balance, user.HoldBalance, user.Rating, escapedPremiumStatus,
 		)
 
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
