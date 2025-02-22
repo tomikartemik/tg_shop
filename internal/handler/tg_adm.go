@@ -31,6 +31,9 @@ func (h *AdminHandler) sendAdminMainMenu(bot *tgbotapi.BotAPI, chatID int64) {
 			tgbotapi.NewKeyboardButton("📢 Broadcast Message"),
 			tgbotapi.NewKeyboardButton("🔎 Find User by Username"),
 		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("❌ Cancel"),
+		),
 	)
 
 	msg := tgbotapi.NewMessage(chatID, menuMessage)
@@ -45,6 +48,12 @@ func (h *AdminHandler) sendAdminMainMenu(bot *tgbotapi.BotAPI, chatID int64) {
 func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	chatID := update.Message.Chat.ID
 	messageText := update.Message.Text
+
+	if messageText == "❌ Cancel" {
+		delete(h.userStates, chatID)
+		h.sendAdminMainMenu(bot, chatID)
+		return
+	}
 
 	if state, exists := h.userStates[chatID]; exists {
 		switch {
@@ -163,6 +172,9 @@ func (h *AdminHandler) handleUserSearch(bot *tgbotapi.BotAPI, chatID int64, user
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("✏️ Delete Ad", fmt.Sprintf("delete_ad_%d", userID)),
 		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("❌ Cancel", "cancel"),
+		),
 	)
 
 	msg.ReplyMarkup = actionKeyboard
@@ -251,6 +263,11 @@ func (h *AdminHandler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *
 	chatID := callbackQuery.Message.Chat.ID
 
 	switch {
+	case data == "cancel":
+		delete(h.userStates, chatID)
+		h.sendAdminMainMenu(bot, chatID)
+		return
+
 	case strings.HasPrefix(data, "block_"):
 		userID, err := strconv.Atoi(strings.TrimPrefix(data, "block_"))
 		if err != nil {

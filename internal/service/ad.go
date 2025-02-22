@@ -125,7 +125,7 @@ func (s *AdService) EditAd(adID int, updatedAd model.Ad) error {
 }
 
 func (s *AdService) DeleteAd(adID int) error {
-	return s.repo.DeleteAd(adID)
+	return s.repo.UpdateAdStatus(adID, "Deleted")
 }
 
 func (s *AdService) convertAdToAdInfo(ad model.Ad) (model.AdInfo, error) {
