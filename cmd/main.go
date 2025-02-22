@@ -45,7 +45,7 @@ func main() {
 	go func() {
 		for {
 			premiumHandler.NotifyPremiumUsers()
-			time.Sleep(1 * time.Minute) //For test
+			time.Sleep(30 * time.Minute)
 		}
 	}()
 
