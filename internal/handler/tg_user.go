@@ -957,7 +957,12 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_stock"
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the stock quantity for your ad:")
-		msg.ReplyMarkup = getExitKeyboard()
+		msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+			tgbotapi.NewKeyboardButtonRow(
+				tgbotapi.NewKeyboardButton("♾️ Unlimited"),
+				tgbotapi.NewKeyboardButton("❌ Exit"),
+			),
+		)
 		bot.Send(msg)
 
 	case "creating_ad_stock":
