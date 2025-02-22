@@ -16,6 +16,22 @@ import (
 func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
 
+	user, err := h.services.GetUserById(int(telegramID))
+	if err != nil {
+		log.Printf("Error fetching user: %v", err)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+		bot.Send(msg)
+		return
+	}
+
+	isBlocked := user.Banned
+
+	if isBlocked {
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
+		bot.Send(msg)
+		return
+	}
+
 	channelChatID := int64(-1002262695419)
 	member, err := bot.GetChatMember(tgbotapi.GetChatMemberConfig{
 		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
@@ -241,6 +257,22 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 	data := callbackQuery.Data
 	chatID := callbackQuery.Message.Chat.ID
 	messageID := callbackQuery.Message.MessageID
+
+	user, err := h.services.GetUserById(int(chatID))
+	if err != nil {
+		log.Printf("Error fetching user: %v", err)
+		msg := tgbotapi.NewMessage(chatID, "An error occurred. Please try again later.")
+		bot.Send(msg)
+		return
+	}
+
+	isBlocked := user.Banned
+
+	if isBlocked {
+		msg := tgbotapi.NewMessage(chatID, "You are blocked and cannot use this bot.")
+		bot.Send(msg)
+		return
+	}
 
 	if strings.HasPrefix(data, "rate_") {
 		parts := strings.Split(data, "_")
@@ -569,6 +601,22 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
 	messageText := strings.TrimSpace(update.Message.Text)
+
+	user, err := h.services.GetUserById(int(telegramID))
+	if err != nil {
+		log.Printf("Error fetching user: %v", err)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+		bot.Send(msg)
+		return
+	}
+
+	isBlocked := user.Banned
+
+	if isBlocked {
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
+		bot.Send(msg)
+		return
+	}
 
 	log.Printf("User %d state: %s", telegramID, h.userStates[telegramID])
 	log.Printf("Received message: %s", messageText)
