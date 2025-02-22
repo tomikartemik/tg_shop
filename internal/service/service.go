@@ -23,7 +23,7 @@ func NewService(repos *repository.Repository, bot *tgbotapi.BotAPI) *Service {
 		Category:    NewCategoryService(repos.Category),
 		CryptoCloud: NewCryptoCloudService(repos.User, repos.Invoice, bot),
 		Payout:      NewPayoutService(repos.Payout),
-		Earning:     NewEarningService(repos.Earning, repos.User),
+		Earning:     NewEarningService(repos.Earning, repos.User, bot),
 		Premium:     NewPremiumService(repos.Premium, repos.Ad),
 	}
 }
@@ -38,11 +38,12 @@ type User interface {
 	BlockUser(userID int) error
 	GrantPremium(userID int) error
 	ChangeBalance(userID int, newBalance float64) error
-	ChangeRating(userID int, newRating float64) error
+	ChangeRating(sellerID int, review int) error
 	GetUserByUsername(username string) (model.User, error)
 	SearchUsers(query string) ([]model.UserInfo, error)
 	Purchase(request model.PurchaseRequest) error
 	GetUserById(id int) (model.User, error)
+	ChangeRatingAdm(userID int, newRating float64) error
 }
 
 type Ad interface {

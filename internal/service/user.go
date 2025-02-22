@@ -217,21 +217,6 @@ func (s *UserService) ChangeBalance(userID int, newBalance float64) error {
 	return nil
 }
 
-func (s *UserService) ChangeRating(userID int, newRating float64) error {
-	user, err := s.repo.GetUserById(userID)
-	if err != nil {
-		return fmt.Errorf("failed to fetch user: %w", err)
-	}
-
-	user.Rating = newRating
-	_, updateErr := s.repo.UpdateUser(user)
-	if updateErr != nil {
-		return fmt.Errorf("failed to change rating: %w", updateErr)
-	}
-
-	return nil
-}
-
 func (s *UserService) GetUserByUsername(username string) (model.User, error) {
 	return s.repo.GetUserByUsername(username)
 }
@@ -252,6 +237,21 @@ func (s *UserService) SearchUsers(query string) ([]model.UserInfo, error) {
 	}
 
 	return usersInfo, nil
+}
+
+func (s *UserService) ChangeRatingAdm(userID int, newRating float64) error {
+	user, err := s.repo.GetUserById(userID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	user.Rating = newRating
+	_, updateErr := s.repo.UpdateUser(user)
+	if updateErr != nil {
+		return fmt.Errorf("failed to change rating: %w", updateErr)
+	}
+
+	return nil
 }
 
 func (s *UserService) Purchase(request model.PurchaseRequest) error {
@@ -373,6 +373,23 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 		}
 
 	}
+
+	return nil
+}
+
+func (s *UserService) ChangeRating(sellerID int, review int) error {
+	user, err := s.repo.GetUserById(sellerID)
+
+	if err != nil {
+		return err
+	}
+
+	newUserRating := (user.Rating * float64(user.ReviewNumber+review)) / float64(user.ReviewNumber+1)
+
+	user.Rating = newUserRating
+	user.ReviewNumber = user.ReviewNumber + 1
+
+	s.repo.UpdateUser(user)
 
 	return nil
 }

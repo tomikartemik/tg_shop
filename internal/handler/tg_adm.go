@@ -207,7 +207,7 @@ func (h *AdminHandler) handleChangeRating(bot *tgbotapi.BotAPI, chatID int64, us
 		return
 	}
 
-	err = h.services.User.ChangeRating(userID, newRating)
+	err = h.services.User.ChangeRatingAdm(userID, newRating)
 	if err != nil {
 		msg := tgbotapi.NewMessage(chatID, "Failed to change rating.")
 		bot.Send(msg)

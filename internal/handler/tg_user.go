@@ -242,7 +242,48 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 	chatID := callbackQuery.Message.Chat.ID
 	messageID := callbackQuery.Message.MessageID
 
-	if strings.HasPrefix(data, "approve_ad_") {
+	if strings.HasPrefix(data, "rate_") {
+		parts := strings.Split(data, "_")
+		if len(parts) != 3 {
+			log.Printf("Invalid rating callback data: %s", data)
+			return
+		}
+
+		sellerID, err := strconv.Atoi(parts[1])
+		if err != nil {
+			log.Printf("Failed to parse sellerID: %v", err)
+			return
+		}
+
+		rating, err := strconv.Atoi(parts[2])
+		if err != nil {
+			log.Printf("Failed to parse rating: %v", err)
+			return
+		}
+
+		err = h.services.User.ChangeRating(sellerID, rating)
+		if err != nil {
+			log.Printf("Failed to change seller rating: %v", err)
+			msg := tgbotapi.NewMessage(chatID, "An error occurred when changing the seller's rating.")
+			bot.Send(msg)
+			return
+		}
+
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			chatID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
+
+		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Thanks! You rated the seller on %d.", rating))
+		bot.Send(msg)
+		return
+	} else if strings.HasPrefix(data, "approve_ad_") {
 		parts := strings.Split(data, "_")
 		adID, _ := strconv.Atoi(parts[2])
 		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
@@ -1376,5 +1417,23 @@ func (h *Handler) NotifyPayout(bot *tgbotapi.BotAPI, user model.User, amount flo
 	_, err := bot.Send(msg)
 	if err != nil {
 		log.Printf("Failed to send payout notification to user %d: %v", user.TelegramID, err)
+	}
+}
+
+func (h *Handler) SendRatingRequest(bot *tgbotapi.BotAPI, chatID int64, sellerID int) {
+	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Please, rate seller (ID: %d):", sellerID))
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("1", fmt.Sprintf("rate_%d_1", sellerID)),
+			tgbotapi.NewInlineKeyboardButtonData("2", fmt.Sprintf("rate_%d_2", sellerID)),
+			tgbotapi.NewInlineKeyboardButtonData("3", fmt.Sprintf("rate_%d_3", sellerID)),
+			tgbotapi.NewInlineKeyboardButtonData("4", fmt.Sprintf("rate_%d_4", sellerID)),
+			tgbotapi.NewInlineKeyboardButtonData("5", fmt.Sprintf("rate_%d_5", sellerID)),
+		),
+	)
+
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Printf("Failed to send rating request: %v", err)
 	}
 }

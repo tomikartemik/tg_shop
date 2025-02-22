@@ -2,18 +2,22 @@ package service
 
 import (
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"log"
 	"tg_shop/internal/repository"
 )
 
 type EarningService struct {
 	repo     repository.Earning
 	repoUser repository.User
+	bot      *tgbotapi.BotAPI
 }
 
-func NewEarningService(repo repository.Earning, repoUser repository.User) *EarningService {
+func NewEarningService(repo repository.Earning, repoUser repository.User, bot *tgbotapi.BotAPI) *EarningService {
 	return &EarningService{
 		repo:     repo,
 		repoUser: repoUser,
+		bot:      bot,
 	}
 }
 
@@ -45,6 +49,22 @@ func (s *EarningService) ProcessEarnings() error {
 
 		if err = s.repo.MarkAsProcessed(&earning); err != nil {
 			return fmt.Errorf("failed to mark earning as processed: %w", err)
+		}
+
+		chatID := earning.BuyerID
+		msg := tgbotapi.NewMessage(int64(chatID), fmt.Sprintf("Please, rate seller (ID: %d):", earning.SellerID))
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("1", fmt.Sprintf("rate_%d_1", earning.SellerID)),
+				tgbotapi.NewInlineKeyboardButtonData("2", fmt.Sprintf("rate_%d_2", earning.SellerID)),
+				tgbotapi.NewInlineKeyboardButtonData("3", fmt.Sprintf("rate_%d_3", earning.SellerID)),
+				tgbotapi.NewInlineKeyboardButtonData("4", fmt.Sprintf("rate_%d_4", earning.SellerID)),
+				tgbotapi.NewInlineKeyboardButtonData("5", fmt.Sprintf("rate_%d_5", earning.SellerID)),
+			),
+		)
+
+		if _, err := s.bot.Send(msg); err != nil {
+			log.Printf("Failed to send rating request: %v", err)
 		}
 	}
 
