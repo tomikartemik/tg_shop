@@ -1039,7 +1039,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		ad.Description = messageText
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_price"
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the price for your ad:")
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter the price for your ad(Only Dollars $):")
 		msg.ReplyMarkup = getExitKeyboard()
 		bot.Send(msg)
 
