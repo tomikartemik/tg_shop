@@ -619,6 +619,15 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		return
 	}
 
+	if messageText == "❌ Cancel" || messageText == "❌ Exit" {
+		delete(h.userStates, telegramID)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Operation has been canceled.")
+		msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+		bot.Send(msg)
+		h.sendMainMenu(bot, update.Message.Chat.ID)
+		return
+	}
+
 	log.Printf("User %d state: %s", telegramID, h.userStates[telegramID])
 	log.Printf("Received message: %s", messageText)
 
