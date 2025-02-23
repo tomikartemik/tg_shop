@@ -370,7 +370,7 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 
 	} else if strings.HasPrefix(data, "approve_payout_") {
 		parts := strings.Split(data, "_")
-		log.Println("Parts", parts)
+		log.Printf("Parts: %v", parts)
 		payoutID, _ := strconv.Atoi(parts[2])
 		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
 
