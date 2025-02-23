@@ -59,5 +59,5 @@ func (h *Handler) Purchase(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Покупка успешно совершена"})
+	c.JSON(http.StatusOK, gin.H{"message": "Purchase successfully completed!"})
 }
