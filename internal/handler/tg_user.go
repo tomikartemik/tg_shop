@@ -370,6 +370,7 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 
 	} else if strings.HasPrefix(data, "approve_payout_") {
 		parts := strings.Split(data, "_")
+		log.Println("Parts", parts)
 		payoutID, _ := strconv.Atoi(parts[2])
 		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
 
@@ -1485,8 +1486,8 @@ func (h *Handler) SendPayoutRequestToModeration(bot *tgbotapi.BotAPI, user model
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("✅ Approve", fmt.Sprintf("approve_payout_%d_%d", user.TelegramID, payoutGroupID)),
-			tgbotapi.NewInlineKeyboardButtonData("❌ Reject", fmt.Sprintf("reject_payout_%d_%d", user.TelegramID, payoutGroupID)),
+			tgbotapi.NewInlineKeyboardButtonData("✅ Approve", fmt.Sprintf("approve_payout_%d_%d", payoutID, payoutGroupID)),
+			tgbotapi.NewInlineKeyboardButtonData("❌ Reject", fmt.Sprintf("reject_payout_%d_%d", payoutID, payoutGroupID)),
 		),
 	)
 
