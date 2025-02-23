@@ -259,64 +259,7 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 	chatID := callbackQuery.Message.Chat.ID
 	messageID := callbackQuery.Message.MessageID
 
-	user, err := h.services.GetUserById(int(chatID))
-	if err != nil {
-		log.Printf("Error fetching user: %v", err)
-		msg := tgbotapi.NewMessage(chatID, "An error occurred. Please try again later.")
-		bot.Send(msg)
-		return
-	}
-
-	isBlocked := user.Banned
-
-	if isBlocked {
-		msg := tgbotapi.NewMessage(chatID, "You are blocked and cannot use this bot.")
-		bot.Send(msg)
-		return
-	}
-
-	if strings.HasPrefix(data, "rate_") {
-		parts := strings.Split(data, "_")
-		if len(parts) != 3 {
-			log.Printf("Invalid rating callback data: %s", data)
-			return
-		}
-
-		sellerID, err := strconv.Atoi(parts[1])
-		if err != nil {
-			log.Printf("Failed to parse sellerID: %v", err)
-			return
-		}
-
-		rating, err := strconv.Atoi(parts[2])
-		if err != nil {
-			log.Printf("Failed to parse rating: %v", err)
-			return
-		}
-
-		err = h.services.User.ChangeRating(sellerID, rating)
-		if err != nil {
-			log.Printf("Failed to change seller rating: %v", err)
-			msg := tgbotapi.NewMessage(chatID, "An error occurred when changing the seller's rating.")
-			bot.Send(msg)
-			return
-		}
-
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			chatID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
-		}
-
-		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Thanks! You rated the seller on %d.", rating))
-		bot.Send(msg)
-		return
-	} else if strings.HasPrefix(data, "approve_ad_") {
+	if strings.HasPrefix(data, "approve_ad_") {
 		parts := strings.Split(data, "_")
 		adID, _ := strconv.Atoi(parts[2])
 		groupID, _ := strconv.ParseInt(parts[3], 10, 64)
@@ -458,6 +401,65 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 		}
 		h.NotifyPayout(bot, user, payout.Amount, false)
 
+	} else {
+		user, err := h.services.GetUserById(int(chatID))
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			msg := tgbotapi.NewMessage(chatID, "An error occurred. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		isBlocked := user.Banned
+
+		if isBlocked {
+			msg := tgbotapi.NewMessage(chatID, "You are blocked and cannot use this bot.")
+			bot.Send(msg)
+			return
+		}
+	}
+
+	if strings.HasPrefix(data, "rate_") {
+		parts := strings.Split(data, "_")
+		if len(parts) != 3 {
+			log.Printf("Invalid rating callback data: %s", data)
+			return
+		}
+
+		sellerID, err := strconv.Atoi(parts[1])
+		if err != nil {
+			log.Printf("Failed to parse sellerID: %v", err)
+			return
+		}
+
+		rating, err := strconv.Atoi(parts[2])
+		if err != nil {
+			log.Printf("Failed to parse rating: %v", err)
+			return
+		}
+
+		err = h.services.User.ChangeRating(sellerID, rating)
+		if err != nil {
+			log.Printf("Failed to change seller rating: %v", err)
+			msg := tgbotapi.NewMessage(chatID, "An error occurred when changing the seller's rating.")
+			bot.Send(msg)
+			return
+		}
+
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			chatID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
+		}
+
+		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Thanks! You rated the seller on %d.", rating))
+		bot.Send(msg)
+		return
 	} else {
 		switch data {
 		case "i_am_subscribed":
