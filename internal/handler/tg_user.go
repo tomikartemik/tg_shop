@@ -520,7 +520,9 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			)
 			bot.Send(msg)
 
-			h.userStates[callbackQuery.From.ID] = "requesting_payout"
+			// Устанавливаем состояние для запроса суммы
+			h.userStates[callbackQuery.From.ID] = "requesting_payout_amount"
+
 		case "change_name":
 			msg := tgbotapi.NewMessage(chatID, "Please enter your new name:")
 			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
@@ -659,6 +661,132 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		)
 		bot.Send(msg)
 		return
+	} else if strings.HasPrefix(h.userStates[telegramID], "requesting_payout") {
+		// Если пользователь нажал "Отмена"
+		if strings.TrimSpace(messageText) == "❌ Cancel" {
+			delete(h.userStates, telegramID)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Payout operation has been canceled.")
+			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+			bot.Send(msg)
+			h.sendMainMenu(bot, update.Message.Chat.ID)
+			return
+		}
+
+		// Обработка в зависимости от текущего состояния
+		if h.userStates[telegramID] == "requesting_payout_amount" {
+			amount, err := strconv.ParseFloat(messageText, 64)
+			if err != nil || amount <= 0 {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid amount. Please enter a positive number.")
+				bot.Send(msg)
+				return
+			}
+
+			// Проверка на минимальную сумму вывода
+			if amount < 50 {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Minimum withdrawal amount is $50.")
+				bot.Send(msg)
+				return
+			}
+
+			user, err := h.services.GetUserById(int(telegramID))
+			if err != nil {
+				log.Printf("Error fetching user: %v", err)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load your profile. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			if amount > user.Balance {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Insufficient balance.")
+				bot.Send(msg)
+				return
+			}
+
+			// Сохраняем сумму в состоянии
+			h.userStates[telegramID] = fmt.Sprintf("requesting_payout_username:%f", amount)
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your username (must start with @):")
+			bot.Send(msg)
+
+		} else if strings.HasPrefix(h.userStates[telegramID], "requesting_payout_username:") {
+			if !strings.HasPrefix(messageText, "@") {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid username. It must start with @. Please try again:")
+				bot.Send(msg)
+				return
+			}
+
+			// Извлекаем сумму из состояния
+			parts := strings.Split(h.userStates[telegramID], ":")
+			if len(parts) != 2 {
+				log.Printf("Invalid state format: %s", h.userStates[telegramID])
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			amount, err := strconv.ParseFloat(parts[1], 64)
+			if err != nil {
+				log.Printf("Failed to parse amount: %v", err)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			// Сохраняем username в состоянии
+			h.userStates[telegramID] = fmt.Sprintf("requesting_payout_wallet:%f:%s", amount, messageText)
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your USDT TRC20 wallet address:")
+			bot.Send(msg)
+
+		} else if strings.HasPrefix(h.userStates[telegramID], "requesting_payout_wallet:") {
+			// Извлекаем сумму и username из состояния
+			parts := strings.Split(h.userStates[telegramID], ":")
+			if len(parts) != 3 {
+				log.Printf("Invalid state format: %s", h.userStates[telegramID])
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			amount, err := strconv.ParseFloat(parts[1], 64)
+			if err != nil {
+				log.Printf("Failed to parse amount: %v", err)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			username := parts[2]
+			wallet := messageText
+
+			// Создаем запрос на вывод
+			payoutID, err := h.services.Payout.CreatePayoutRequest(int(telegramID), amount)
+			if err != nil {
+				log.Printf("Error creating payout request: %v", err)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to create payout request. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			log.Printf("Payout request created with ID: %d", payoutID)
+
+			// Отправка сообщения в группу модерации
+			payoutGroupID, _ := strconv.ParseInt(os.Getenv("GROUP_WITHDRAWAL_ID"), 10, 64)
+			messageID, err := h.SendPayoutRequestToModeration(bot, user, amount, payoutGroupID, payoutID, username, wallet)
+			if err != nil {
+				log.Printf("Error sending payout request to moderation group: %v", err)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to notify moderators. Please try again later.")
+				bot.Send(msg)
+				return
+			}
+
+			_ = messageID
+
+			delete(h.userStates, telegramID)
+
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your payout request has been submitted for moderation.")
+			bot.Send(msg)
+		}
 	} else if h.userStates[telegramID] == "changing_name" {
 		newName := messageText
 
@@ -698,78 +826,6 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		delete(h.userStates, telegramID)
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 		return
-	} else if h.userStates[telegramID] == "requesting_payout" {
-		// Если пользователь нажал "Отмена"
-		if strings.TrimSpace(messageText) == "❌ Cancel" {
-			delete(h.userStates, telegramID)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Payout operation has been canceled.")
-			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-			bot.Send(msg)
-			h.sendMainMenu(bot, update.Message.Chat.ID)
-			return
-		}
-
-		amount, err := strconv.ParseFloat(messageText, 64)
-		if err != nil || amount <= 0 {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid amount. Please enter a positive number.")
-			bot.Send(msg)
-			return
-		}
-
-		// Проверка на минимальную сумму вывода
-		if amount < 50 {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Minimum withdrawal amount is $50.")
-			bot.Send(msg)
-			return
-		}
-
-		user, err := h.services.GetUserById(int(telegramID))
-		if err != nil {
-			log.Printf("Error fetching user: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to load your profile. Please try again later.")
-			bot.Send(msg)
-			return
-		}
-
-		if amount > user.Balance {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Insufficient balance.")
-			bot.Send(msg)
-			return
-		}
-
-		// Проверка на минимальный баланс
-		if user.Balance < 50 {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your balance is less than the minimum withdrawal amount of $50.")
-			bot.Send(msg)
-			return
-		}
-
-		payoutID, err := h.services.Payout.CreatePayoutRequest(int(telegramID), amount)
-		if err != nil {
-			log.Printf("Error creating payout request: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to create payout request. Please try again later.")
-			bot.Send(msg)
-			return
-		}
-
-		log.Printf("Payout request created with ID: %d", payoutID)
-
-		// Отправка сообщения в группу модерации
-		payoutGroupID, _ := strconv.ParseInt(os.Getenv("GROUP_WITHDRAWAL_ID"), 10, 64)
-		messageID, err := h.SendPayoutRequestToModeration(bot, user, amount, payoutGroupID, payoutID)
-		if err != nil {
-			log.Printf("Error sending payout request to moderation group: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to notify moderators. Please try again later.")
-			bot.Send(msg)
-			return
-		}
-
-		_ = messageID
-
-		delete(h.userStates, telegramID)
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Your payout request has been submitted for moderation.")
-		bot.Send(msg)
 	} else if h.userStates[telegramID] == "uploading_avatar" {
 		// Если пользователь нажал "Skip"
 		if strings.TrimSpace(messageText) == "✅ Skip" {
@@ -1414,13 +1470,15 @@ func (h *Handler) SendAdToOurGroup(bot *tgbotapi.BotAPI, ad model.Ad, moderation
 	return sentMsg.MessageID, nil
 }
 
-func (h *Handler) SendPayoutRequestToModeration(bot *tgbotapi.BotAPI, user model.User, amount float64, payoutGroupID int64, payoutID int) (int, error) {
+func (h *Handler) SendPayoutRequestToModeration(bot *tgbotapi.BotAPI, user model.User, amount float64, payoutGroupID int64, payoutID int, username, wallet string) (int, error) {
 	messageText := fmt.Sprintf(
 		"💸 *Payout Request:*\n"+
 			"**User:** %s\n"+
 			"**Telegram ID:** %d\n"+
+			"**Username:** %s\n"+
+			"**USDT TRC20 Wallet:** %s\n"+
 			"**Amount:** %.2f$\n",
-		user.Username, user.TelegramID, amount,
+		user.Username, user.TelegramID, username, wallet, amount,
 	)
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -1441,7 +1499,6 @@ func (h *Handler) SendPayoutRequestToModeration(bot *tgbotapi.BotAPI, user model
 
 	return sentMsg.MessageID, nil
 }
-
 func (h *Handler) NotifyUser(bot *tgbotapi.BotAPI, userID int, ad model.Ad, approved bool) {
 	var messageText string
 	if approved {
