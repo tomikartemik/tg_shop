@@ -1324,13 +1324,14 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 				"**Price:** %.2f$\n"+
 				"**Stock:** %d\n"+
 				"**Category:** %s\n"+
-				"**Seller:** %d\nDo you want to submit this ad? Use the buttons below:",
-			ad.Title, ad.Description, ad.Price, ad.Stock, category.Name, ad.SellerID,
+				"Do you want to submit this ad? Use the buttons below:",
+			ad.Title, ad.Description, ad.Price, ad.Stock, category.Name,
 		)
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, messageTxt)
-		msg.ParseMode = "Markdown"
-		msg.ReplyMarkup = getAdCreationButtons("creating_ad_finish")
-		bot.Send(msg)
+		photo := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FilePath(ad.PhotoURL))
+		photo.Caption = messageTxt
+		photo.ParseMode = "Markdown"
+		photo.ReplyMarkup = getAdCreationButtons("creating_ad_finish")
+		bot.Send(photo)
 
 	case "creating_ad_finish":
 		if messageText == "❌ Cancel" {
