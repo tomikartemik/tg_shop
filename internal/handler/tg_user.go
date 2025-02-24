@@ -598,8 +598,7 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			bot.Send(msg)
 			h.userStates[callbackQuery.From.ID] = "changing_photo"
 		default:
-			msg := tgbotapi.NewMessage(chatID, "Unknown action.")
-			bot.Send(msg)
+
 		}
 	}
 }
@@ -1311,7 +1310,25 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		}
 
 		h.tempAdData[telegramID] = ad
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Do you want to submit this ad? Use the buttons below:")
+
+		category, err := h.services.Category.GetCategoryById(ad.CategoryID)
+
+		if err != nil {
+			log.Printf("Error fetching category: %v", err)
+		}
+
+		messageTxt := fmt.Sprintf(
+			"📢 *Ad for Moderation:*\n"+
+				"**Title:** %s\n"+
+				"**Description:** %s\n"+
+				"**Price:** %.2f$\n"+
+				"**Stock:** %d\n"+
+				"**Category:** %s\n"+
+				"**Seller:** %d\nDo you want to submit this ad? Use the buttons below:",
+			ad.Title, ad.Description, ad.Price, ad.Stock, category.Name, ad.SellerID,
+		)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, messageTxt)
+		msg.ParseMode = "Markdown"
 		msg.ReplyMarkup = getAdCreationButtons("creating_ad_finish")
 		bot.Send(msg)
 
