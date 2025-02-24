@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"tg_shop/internal/model"
 	"tg_shop/internal/repository"
 )
@@ -87,6 +88,13 @@ func (s *AdService) GetAdByID(idStr string) (model.AdInfo, error) {
 	if err != nil {
 		return model.AdInfo{}, err
 	}
+
+	paragraphs := strings.Split(ad.Description, "\n")
+
+	// Объединяем абзацы с разделителем \n
+	formattedDescription := strings.Join(paragraphs, "\\n")
+
+	ad.Description = formattedDescription
 
 	adInfo, err := s.convertAdToAdInfo(ad)
 
