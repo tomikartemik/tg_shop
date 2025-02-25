@@ -78,11 +78,11 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 			h.handleChangeRating(bot, chatID, userID, messageText)
 		case strings.HasPrefix(state, "deleting_ad_"):
 			adID, _ := strconv.Atoi(strings.TrimPrefix(state, "deleting_ad_"))
-			h.handleDeleteAd(bot, chatID, strconv.Itoa(adID))
+			h.handleDeleteAd(bot, chatID, adID, messageText)
 		case strings.HasPrefix(state, "waiting_for_ad_id_"):
 			adID, _ := strconv.Atoi(strings.TrimPrefix(state, "deleting_ad_"))
 
-			h.handleDeleteAd(bot, chatID, strconv.Itoa(adID))
+			h.handleDeleteAd(bot, chatID, adID, messageText)
 
 			delete(h.userStates, chatID)
 			return
@@ -216,7 +216,7 @@ func (h *AdminHandler) handleChangeRating(bot *tgbotapi.BotAPI, chatID int64, us
 	bot.Send(msg)
 }
 
-func (h *AdminHandler) handleDeleteAd(bot *tgbotapi.BotAPI, chatID int64, messageText string) {
+func (h *AdminHandler) handleDeleteAd(bot *tgbotapi.BotAPI, chatID int64, adID int, messageText string) {
 	ad, err := h.services.Ad.GetAdByID(messageText)
 	if err != nil {
 		msg := tgbotapi.NewMessage(chatID, "Ad not found. Please check the ID and try again.")
