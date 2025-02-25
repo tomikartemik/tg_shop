@@ -80,23 +80,9 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 			adID, _ := strconv.Atoi(strings.TrimPrefix(state, "deleting_ad_"))
 			h.handleDeleteAd(bot, chatID, adID, messageText)
 		case strings.HasPrefix(state, "waiting_for_ad_id_"):
-			adID, err := strconv.Atoi(messageText)
-			if err != nil {
-				msg := tgbotapi.NewMessage(chatID, "Invalid ad ID. Please enter a numeric value:")
-				bot.Send(msg)
-				return
-			}
+			adID, _ := strconv.Atoi(strings.TrimPrefix(state, "deleting_ad_"))
 
-			err = h.services.Ad.DeleteAd(adID)
-			if err != nil {
-				log.Printf("Error deleting ad: %v", err)
-				msg := tgbotapi.NewMessage(chatID, "Failed to delete the ad. Please try again.")
-				bot.Send(msg)
-				return
-			}
-
-			msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad with ID %d deleted successfully.", adID))
-			bot.Send(msg)
+			h.handleDeleteAd(bot, chatID, adID, messageText)
 
 			delete(h.userStates, chatID)
 			return
