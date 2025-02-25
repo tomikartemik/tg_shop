@@ -110,7 +110,15 @@ func (s *UserService) GetUserAsSellerByID(telegramIDStr string) (model.UserAsSel
 		return userAsSeller, err
 	}
 
-	adsShortInfo, err := s.convertAdsToAdsShortInfo(user.Ads)
+	var activeAds []model.Ad
+
+	for _, ad := range user.Ads {
+		if ad.Status == "Enabled" {
+			activeAds = append(activeAds, ad)
+		}
+	}
+
+	adsShortInfo, err := s.convertAdsToAdsShortInfo(activeAds)
 
 	if err != nil {
 		return userAsSeller, err
@@ -448,12 +456,20 @@ func (s *UserService) convertUserToUserInfo(telegramID int) (model.UserInfo, err
 		return userInfo, err
 	}
 
-	ads, err := s.convertAdsToAdsShortInfo(user.Ads)
+	purchased, err := s.convertAdsToAdsShortInfo(user.Purchased)
 	if err != nil {
 		return userInfo, err
 	}
 
-	purchased, err := s.convertAdsToAdsShortInfo(user.Purchased)
+	var activeAds []model.Ad
+
+	for _, ad := range user.Ads {
+		if ad.Status == "Enabled" {
+			activeAds = append(activeAds, ad)
+		}
+	}
+
+	ads, err := s.convertAdsToAdsShortInfo(activeAds)
 	if err != nil {
 		return userInfo, err
 	}
