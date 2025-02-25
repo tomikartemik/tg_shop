@@ -1545,8 +1545,8 @@ func (h *Handler) SendPayoutRequestToModeration(bot *tgbotapi.BotAPI, user model
 		"💸 *Payout Request:*\n"+
 			"**User:** %s\n"+
 			"**Telegram ID:** %d\n"+
-			"**Username:** %s\n"+
-			"**USDT TRC20 Wallet:** %s\n"+
+			"**Username:** `%s`\n"+
+			"**USDT TRC20 Wallet:** `%s`\n"+
 			"**Amount:** %.2f$\n",
 		user.Username, user.TelegramID, username, wallet, amount,
 	)
