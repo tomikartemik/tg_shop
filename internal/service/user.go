@@ -151,6 +151,19 @@ func (s *UserService) BroadcastMessage(message string) error {
 	return nil
 }
 
+func (s *UserService) BroadcastAboutDelete(sellerID int, message string) error {
+	user, err := s.repo.GetUserById(sellerID)
+	if err != nil {
+		return fmt.Errorf("failed to get all user: %w", err)
+	}
+
+	if err2 := s.SendMessageToUser(user.TelegramID, message); err2 != nil {
+		log.Printf("Failed to send message to user %d: %v", user.TelegramID, err2)
+	}
+
+	return nil
+}
+
 func (s *UserService) SendMessageToUser(telegramID int, message string) error {
 	botToken := os.Getenv("BOT_TOKEN")
 	if botToken == "" {

@@ -231,14 +231,31 @@ func (h *AdminHandler) handleChangeRating(bot *tgbotapi.BotAPI, chatID int64, us
 }
 
 func (h *AdminHandler) handleDeleteAd(bot *tgbotapi.BotAPI, chatID int64, adID int, messageText string) {
-	err := h.services.Ad.DeleteAd(adID)
+	ad, err := h.services.Ad.GetAdByID(messageText)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Ad not found. Please check the ID and try again.")
+		bot.Send(msg)
+		return
+	}
+
+	if ad.SellerID == 0 {
+		msg := tgbotapi.NewMessage(chatID, "Seller ID is invalid for this ad.")
+		bot.Send(msg)
+		return
+	}
+
+	err = h.services.Ad.DeleteAd(adID)
 	if err != nil {
 		msg := tgbotapi.NewMessage(chatID, "Failed to delete the ad. Please try again.")
 		bot.Send(msg)
 		return
 	}
 
-	msg := tgbotapi.NewMessage(chatID, "Ad deleted successfully.")
+	message := fmt.Sprintf("⚠️ Your ad titled '%s' has been deleted by an administrator.", ad.Title)
+
+	h.NotifyUserAboutAdDeletion(bot, chatID, ad.SellerID, message)
+
+	msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Ad with title '%s' deleted successfully.", ad.Title))
 	bot.Send(msg)
 }
 
@@ -338,5 +355,16 @@ func (h *AdminHandler) handleFindUserByUsername(bot *tgbotapi.BotAPI, chatID int
 	)
 
 	msg := tgbotapi.NewMessage(chatID, userInfo)
+	bot.Send(msg)
+}
+
+func (h *AdminHandler) NotifyUserAboutAdDeletion(bot *tgbotapi.BotAPI, chatID int64, sellerID int, messageText string) {
+	err := h.services.User.BroadcastAboutDelete(sellerID, messageText)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, "Failed to broadcast message.")
+		bot.Send(msg)
+		return
+	}
+	msg := tgbotapi.NewMessage(chatID, "Message broadcasted successfully!")
 	bot.Send(msg)
 }

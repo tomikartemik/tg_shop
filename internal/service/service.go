@@ -44,6 +44,7 @@ type User interface {
 	Purchase(request model.PurchaseRequest) error
 	GetUserById(id int) (model.User, error)
 	ChangeRatingAdm(userID int, newRating float64) error
+	BroadcastAboutDelete(sellerID int, message string) error
 }
 
 type Ad interface {

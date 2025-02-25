@@ -560,7 +560,7 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 
 			deleteButton := tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Delete Ad", "delete_ad"),
+					tgbotapi.NewInlineKeyboardButtonData("❌ Delete Ad", "delete_ad"),
 				),
 			)
 
