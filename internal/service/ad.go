@@ -92,7 +92,7 @@ func (s *AdService) GetAdByID(idStr string) (model.AdInfo, error) {
 	paragraphs := strings.Split(ad.Description, `\n`)
 
 	// Объединяем абзацы с разделителем \n
-	formattedDescription := strings.Join(paragraphs, `\\n`)
+	formattedDescription := strings.Join(paragraphs, `\n`)
 
 	ad.Description = formattedDescription
 

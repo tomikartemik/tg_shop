@@ -1097,7 +1097,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 
 		ad := h.tempAdData[telegramID]
 		paragraphs := strings.Split(messageText, "\n")
-		formattedDescription := strings.Join(paragraphs, "\\n")
+		formattedDescription := strings.Join(paragraphs, "\n")
 		ad.Description = formattedDescription
 		h.tempAdData[telegramID] = ad
 		h.userStates[telegramID] = "creating_ad_price"
