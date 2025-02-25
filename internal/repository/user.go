@@ -141,3 +141,10 @@ func (repo *UserRepository) ChangeHoldBalance(userID int, newBalance float64) er
 
 	return tx.Commit().Error
 }
+
+func (repo *UserRepository) IncrementSalesAmount(userID int) error {
+	if err := repo.db.Where("telegram_id = ?", userID).Update("sales_amount", gorm.Expr("sales_amount + 1")).Error; err != nil {
+		return err
+	}
+	return nil
+}

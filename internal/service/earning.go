@@ -47,6 +47,10 @@ func (s *EarningService) ProcessEarnings() error {
 			return fmt.Errorf("failed to change balance: %w", err)
 		}
 
+		if err = s.repoUser.IncrementSalesAmount(earning.SellerID); err != nil {
+			return fmt.Errorf("failed to increment sales amount: %w", err)
+		}
+
 		if err = s.repo.MarkAsProcessed(&earning); err != nil {
 			return fmt.Errorf("failed to mark earning as processed: %w", err)
 		}

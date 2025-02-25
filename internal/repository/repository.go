@@ -37,6 +37,7 @@ type User interface {
 	AddPurchase(userID, adID int) error
 	ChangeBalance(userID int, newBlance float64) error
 	ChangeHoldBalance(userID int, newBalance float64) error
+	IncrementSalesAmount(userID int) error
 }
 
 type Ad interface {
