@@ -405,7 +405,7 @@ func (s *UserService) ChangeRating(sellerID int, review int) error {
 		return err
 	}
 
-	newUserRating := (user.Rating * float64(user.ReviewNumber+review)) / float64(user.ReviewNumber+1)
+	newUserRating := (user.Rating*float64(user.ReviewNumber) + float64(review)) / float64(user.ReviewNumber+1)
 
 	user.Rating = newUserRating
 	user.ReviewNumber = user.ReviewNumber + 1
