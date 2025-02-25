@@ -558,8 +558,26 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 				)
 			}
 
+			deleteButton := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Delete Ad", "delete_ad"),
+				),
+			)
+
 			msg := tgbotapi.NewMessage(chatID, adsMessage)
 			msg.ParseMode = "Markdown"
+			msg.ReplyMarkup = deleteButton
+			bot.Send(msg)
+
+		case "delete_ad":
+			h.userStates[callbackQuery.From.ID] = "deleting_ad"
+
+			msg := tgbotapi.NewMessage(chatID, "Enter the ID of the ad you want to delete or press 'Cancel':")
+			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+				tgbotapi.NewKeyboardButtonRow(
+					tgbotapi.NewKeyboardButton("❌ Cancel"),
+				),
+			)
 			bot.Send(msg)
 
 		case "my_orders":
@@ -663,6 +681,33 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 		)
 		bot.Send(msg)
 		return
+	} else if h.userStates[telegramID] == "deleting_ad" {
+		adID, err := strconv.Atoi(messageText)
+		if err != nil || adID <= 0 {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid ad ID. Please enter a valid numeric ID:")
+			bot.Send(msg)
+			return
+		}
+
+		ad, err := h.services.Ad.GetAdByIDTg(adID)
+		if err != nil || ad.SellerID != int(telegramID) {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "This ad does not belong to you or does not exist.")
+			bot.Send(msg)
+			return
+		}
+
+		err = h.services.Ad.DeleteAd(adID)
+		if err != nil {
+			log.Printf("Error deleting ad: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Failed to delete the ad. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		delete(h.userStates, telegramID)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Ad with ID %d has been successfully deleted.", adID))
+		bot.Send(msg)
+		h.sendMainMenu(bot, update.Message.Chat.ID)
 	} else if strings.HasPrefix(h.userStates[telegramID], "requesting_payout") {
 		// Если пользователь нажал "Отмена"
 		if strings.TrimSpace(messageText) == "❌ Cancel" {

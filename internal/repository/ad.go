@@ -61,7 +61,12 @@ func (repo *AdRepository) GetAdById(id int) (model.Ad, error) {
 
 func (repo *AdRepository) GetAdsByUserID(userID int) ([]model.Ad, error) {
 	var ads []model.Ad
-	err := repo.db.Where("seller_id = ?", userID).Find(&ads).Error
+	err := repo.db.
+		Where("seller_id = ?", userID).
+		Where("status = ?", "Enabled").
+		Find(&ads).
+		Error
+
 	if err != nil {
 		return nil, err
 	}
