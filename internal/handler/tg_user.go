@@ -269,15 +269,13 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
+		editMessage := tgbotapi.NewEditMessageText(groupID, messageID, "CLOSED❗️")
+		editMessage.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+		}
+
+		if _, err := bot.Send(editMessage); err != nil {
+			log.Printf("Failed to update message: %v", err)
 		}
 
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
@@ -295,15 +293,13 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
+		editMessage := tgbotapi.NewEditMessageText(groupID, messageID, "CLOSED❗️")
+		editMessage.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+		}
+
+		if _, err := bot.Send(editMessage); err != nil {
+			log.Printf("Failed to update message: %v", err)
 		}
 
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
@@ -353,17 +349,14 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
+		editMessage := tgbotapi.NewEditMessageText(groupID, messageID, "CLOSED❗️")
+		editMessage.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
 		}
 
+		if _, err := bot.Send(editMessage); err != nil {
+			log.Printf("Failed to update message: %v", err)
+		}
 		h.NotifyPayout(bot, user, payout.Amount, true)
 
 	} else if strings.HasPrefix(data, "reject_payout_") {
@@ -383,17 +376,14 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
-			groupID,
-			messageID,
-			tgbotapi.InlineKeyboardMarkup{
-				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-			},
-		)
-		if _, err := bot.Send(editMarkup); err != nil {
-			log.Printf("Failed to remove buttons: %v", err)
+		editMessage := tgbotapi.NewEditMessageText(groupID, messageID, "CLOSED❗️")
+		editMessage.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
 		}
 
+		if _, err := bot.Send(editMessage); err != nil {
+			log.Printf("Failed to update message: %v", err)
+		}
 		user, err := h.services.GetUserById(payout.TelegramID)
 		if err != nil {
 			log.Printf("Error fetching user: %v", err)
@@ -1362,21 +1352,25 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 			log.Printf("Error fetching category: %v", err)
 		}
 
-		messageTxt := fmt.Sprintf(
+		photoTxt := fmt.Sprintf(
 			"📢 *Ad for Moderation:*\n"+
 				"**Title:** %s\n"+
 				"**Description:** %s\n"+
 				"**Price:** %.2f$\n"+
 				"**Stock:** %d\n"+
-				"**Category:** %s\n"+
-				"Do you want to submit this ad? Use the buttons below:",
+				"**Category:** %s",
 			ad.Title, ad.Description, ad.Price, ad.Stock, category.Name,
 		)
 		photo := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FilePath(ad.PhotoURL))
-		photo.Caption = messageTxt
+		photo.Caption = photoTxt
 		photo.ParseMode = "Markdown"
-		photo.ReplyMarkup = getAdCreationButtons("creating_ad_finish")
+		messageTxt := "Do you want to submit this ad? Use the buttons below:"
+		message := tgbotapi.NewMessage(update.Message.Chat.ID, messageTxt)
+		message.ReplyMarkup = getAdCreationButtons("creating_ad_finish")
+
 		bot.Send(photo)
+
+		bot.Send(message)
 
 	case "creating_ad_finish":
 		if messageText == "❌ Cancel" {
