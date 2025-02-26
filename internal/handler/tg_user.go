@@ -269,13 +269,9 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editMessage := tgbotapi.NewEditMessageText(groupID, messageID, "CLOSED❗️")
-		editMessage.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{
-			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-		}
-
-		if _, err := bot.Send(editMessage); err != nil {
-			log.Printf("Failed to update message: %v", err)
+		editCaption := tgbotapi.NewEditMessageCaption(groupID, messageID, "CLOSED❗️")
+		if _, err := bot.Send(editCaption); err != nil {
+			log.Printf("Failed to update caption: %v", err)
 		}
 
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
@@ -293,13 +289,9 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editMessage := tgbotapi.NewEditMessageText(groupID, messageID, "CLOSED❗️")
-		editMessage.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{
-			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
-		}
-
-		if _, err := bot.Send(editMessage); err != nil {
-			log.Printf("Failed to update message: %v", err)
+		editCaption := tgbotapi.NewEditMessageCaption(groupID, messageID, "CLOSED❗️")
+		if _, err := bot.Send(editCaption); err != nil {
+			log.Printf("Failed to update caption: %v", err)
 		}
 
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
