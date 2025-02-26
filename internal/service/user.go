@@ -6,6 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gorm.io/gorm"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -406,6 +407,7 @@ func (s *UserService) ChangeRating(sellerID int, review int) error {
 	}
 
 	newUserRating := (user.Rating*float64(user.ReviewNumber) + float64(review)) / float64(user.ReviewNumber+1)
+	newUserRating = math.Round(newUserRating*100) / 100
 
 	user.Rating = newUserRating
 	user.ReviewNumber = user.ReviewNumber + 1
