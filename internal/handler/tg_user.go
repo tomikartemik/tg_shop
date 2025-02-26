@@ -269,9 +269,15 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editCaption := tgbotapi.NewEditMessageCaption(groupID, messageID, "CLOSED❗️")
-		if _, err := bot.Send(editCaption); err != nil {
-			log.Printf("Failed to update caption: %v", err)
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
 		}
 
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
@@ -289,9 +295,15 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editCaption := tgbotapi.NewEditMessageCaption(groupID, messageID, "CLOSED❗️")
-		if _, err := bot.Send(editCaption); err != nil {
-			log.Printf("Failed to update caption: %v", err)
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
 		}
 
 		ad, err := h.services.Ad.GetAdByIDTg(adID)
@@ -341,14 +353,17 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editMessage := tgbotapi.NewEditMessageText(groupID, messageID, "CLOSED❗️")
-		editMessage.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{
-			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
 		}
 
-		if _, err := bot.Send(editMessage); err != nil {
-			log.Printf("Failed to update message: %v", err)
-		}
 		h.NotifyPayout(bot, user, payout.Amount, true)
 
 	} else if strings.HasPrefix(data, "reject_payout_") {
@@ -368,14 +383,17 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			return
 		}
 
-		editMessage := tgbotapi.NewEditMessageText(groupID, messageID, "CLOSED❗️")
-		editMessage.ReplyMarkup = &tgbotapi.InlineKeyboardMarkup{
-			InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+		editMarkup := tgbotapi.NewEditMessageReplyMarkup(
+			groupID,
+			messageID,
+			tgbotapi.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{},
+			},
+		)
+		if _, err := bot.Send(editMarkup); err != nil {
+			log.Printf("Failed to remove buttons: %v", err)
 		}
 
-		if _, err := bot.Send(editMessage); err != nil {
-			log.Printf("Failed to update message: %v", err)
-		}
 		user, err := h.services.GetUserById(payout.TelegramID)
 		if err != nil {
 			log.Printf("Error fetching user: %v", err)
