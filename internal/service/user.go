@@ -364,6 +364,11 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 	msg := tgbotapi.NewMessage(int64(userID), fmt.Sprintf("Your '%s' purchase has been successfully completed", ad.Title))
 	s.bot.Send(msg)
 
+	sellerMsg := fmt.Sprintf("A copy of your ad \"%s\" has just been purchased💰\n\nRemaining number of copies: %d\n\n❗️Money will be available for withdrawal after the inspection time has expired", ad.Title, ad.Stock-1)
+	if err := s.SendMessageToUser(seller.TelegramID, sellerMsg); err != nil {
+		log.Printf("Failed to send message to seller %d: %v", seller.TelegramID, err)
+	}
+
 	if ad.Files != "" {
 
 		absPath, err := filepath.Abs(filepath.Join("..", "cmd", ad.Files))
