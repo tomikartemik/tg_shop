@@ -1322,7 +1322,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		h.tempAdData[update.Message.From.ID] = ad
 
 		h.userStates[update.Message.From.ID] = "creating_ad_files"
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload any additional files for your ad or click 'Skip'.")
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload any additional files for your ad.")
 		msg.ReplyMarkup = getAdCreationButtons("creating_ad_files")
 		bot.Send(msg)
 
@@ -1348,7 +1348,7 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 			ad.Files = filePath
 			h.userStates[telegramID] = "creating_ad_finish"
 		} else {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid file or press 'Skip'.")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please upload a valid file.")
 			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
@@ -1432,7 +1432,6 @@ func getAdCreationButtons(state string) tgbotapi.ReplyKeyboardMarkup {
 	case "creating_ad_files":
 		return tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
-				tgbotapi.NewKeyboardButton("✅ Skip"),
 				tgbotapi.NewKeyboardButton("❌ Exit"),
 			),
 		)
@@ -1495,6 +1494,7 @@ func (h *Handler) SendAdToModeration(bot *tgbotapi.BotAPI, ad model.Ad, moderati
 		ad.Title, ad.Description, ad.Price, ad.Stock, category.Name, ad.SellerID,
 	)
 
+	// Отправляем фото
 	photo := tgbotapi.NewPhoto(moderationGroupID, tgbotapi.FilePath(ad.PhotoURL))
 	photo.Caption = messageText
 	photo.ParseMode = "Markdown"
@@ -1510,6 +1510,15 @@ func (h *Handler) SendAdToModeration(bot *tgbotapi.BotAPI, ad model.Ad, moderati
 	sentMsg, err := bot.Send(photo)
 	if err != nil {
 		return 0, err
+	}
+
+	if ad.Files != "" {
+		file := tgbotapi.NewDocument(moderationGroupID, tgbotapi.FilePath(ad.Files))
+		_, err := bot.Send(file)
+		if err != nil {
+			log.Printf("Failed to send file to moderation group: %v", err)
+			return sentMsg.MessageID, err
+		}
 	}
 
 	return sentMsg.MessageID, nil

@@ -29,7 +29,7 @@ func (h *AdminHandler) sendAdminMainMenu(bot *tgbotapi.BotAPI, chatID int64) {
 		),
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("📢 Broadcast Message"),
-			tgbotapi.NewKeyboardButton("🔎 Find User by Username"),
+			tgbotapi.NewKeyboardButton("🔎 Work with User by ID"),
 		),
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButton("❌ Cancel"),
@@ -67,9 +67,15 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 			h.handleUserSearch(bot, chatID, strconv.Itoa(user.TelegramID))
 		case state == "broadcasting_message":
 			h.handleBroadcast(bot, chatID, messageText)
-		case state == "searching_user_by_username":
-			h.handleFindUserByUsername(bot, chatID, messageText)
-			delete(h.userStates, chatID)
+		case state == "searching_user_by_id":
+			id, _ := strconv.Atoi(messageText)
+			user, err := h.services.User.GetUserById(id)
+			if err != nil {
+				msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("User with username '%s' not found.", messageText))
+				bot.Send(msg)
+				return
+			}
+			h.handleUserSearch(bot, chatID, strconv.Itoa(user.TelegramID))
 		case strings.HasPrefix(state, "changing_balance_"):
 			userID, _ := strconv.Atoi(strings.TrimPrefix(state, "changing_balance_"))
 			h.handleChangeBalance(bot, chatID, userID, messageText)
@@ -104,9 +110,9 @@ func (h *AdminHandler) HandleAdminInput(bot *tgbotapi.BotAPI, update tgbotapi.Up
 		msg := tgbotapi.NewMessage(chatID, "Enter the message to broadcast:")
 		bot.Send(msg)
 
-	case "🔎 Find User by Username":
-		h.userStates[chatID] = "searching_user_by_username"
-		msg := tgbotapi.NewMessage(chatID, "Enter the username of the user:")
+	case "🔎 Work with User by ID":
+		h.userStates[chatID] = "searching_user_by_id"
+		msg := tgbotapi.NewMessage(chatID, "Enter ID of the user:")
 		bot.Send(msg)
 
 	default:
