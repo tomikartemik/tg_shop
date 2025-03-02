@@ -1542,12 +1542,23 @@ func (h *Handler) SendAdToOurGroup(bot *tgbotapi.BotAPI, ad model.Ad, moderation
 		ad.Title, ad.Description, ad.Price, ad.Stock, category.Name, ad.SellerID,
 	)
 
+	// Отправляем фото
 	photo := tgbotapi.NewPhoto(moderationGroupID, tgbotapi.FilePath(ad.PhotoURL))
 	photo.Caption = messageText
 	photo.ParseMode = "Markdown"
+
 	sentMsg, err := bot.Send(photo)
 	if err != nil {
 		return 0, err
+	}
+
+	if ad.Files != "" {
+		file := tgbotapi.NewDocument(moderationGroupID, tgbotapi.FilePath(ad.Files))
+		_, err := bot.Send(file)
+		if err != nil {
+			log.Printf("Failed to send file to moderation group: %v", err)
+			return sentMsg.MessageID, err
+		}
 	}
 
 	return sentMsg.MessageID, nil
