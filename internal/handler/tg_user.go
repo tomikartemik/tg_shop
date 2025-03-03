@@ -16,31 +16,29 @@ import (
 func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
 
-	// Остальная логика после проверки подписки...
-	existingUser, err := h.services.GetUserInfoById(int(telegramID))
-	if err == nil {
-		user, err := h.services.GetUserById(int(telegramID))
+	user, err := h.services.GetUserById(int(telegramID))
+	if err != nil {
+		user := model.User{
+			TelegramID: int(telegramID),
+			Username:   string(telegramID),
+		}
+
+		_, err := h.services.CreateOrUpdateUser(user)
 		if err != nil {
-			log.Printf("Error fetching user: %v", err)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
-			bot.Send(msg)
+			log.Printf("Error updating username: %v", err)
+			if strings.Contains(err.Error(), "duplicate") {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Username is already taken.")
+				bot.Send(msg)
+			}
 			return
 		}
+	}
 
-		isBlocked := user.Banned
+	isBlocked := user.Banned
 
-		if isBlocked {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
-			bot.Send(msg)
-			return
-		}
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
-			"Welcome back, %s!",
-			existingUser.Username,
-		))
+	if isBlocked {
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
 		bot.Send(msg)
-		h.sendMainMenu(bot, update.Message.Chat.ID)
 		return
 	}
 
@@ -62,6 +60,25 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				tgbotapi.NewInlineKeyboardButtonData("I am subscribed", "i_am_subscribed"),
 			),
 		)
+		bot.Send(msg)
+		return
+	}
+
+	// Остальная логика после проверки подписки...
+	existingUser, err := h.services.GetUserInfoById(int(telegramID))
+	if err == nil {
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
+			"Welcome back, %s!",
+			existingUser.Username,
+		))
+		bot.Send(msg)
+		h.sendMainMenu(bot, update.Message.Chat.ID)
+		return
+	}
+
+	if err != nil && !strings.Contains(err.Error(), "record not found") {
+		log.Printf("Error checking user existence: %v", err)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
 		bot.Send(msg)
 		return
 	}
