@@ -64,13 +64,6 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 		return
 	}
-
-	if err != nil && !strings.Contains(err.Error(), "record not found") {
-		log.Printf("Error checking user existence: %v", err)
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
-		bot.Send(msg)
-		return
-	}
 }
 
 func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Update, messageText string) {
