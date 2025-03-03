@@ -44,13 +44,6 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		return
 	}
 
-	if err != nil && !strings.Contains(err.Error(), "record not found") {
-		log.Printf("Error checking user existence: %v", err)
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
-		bot.Send(msg)
-		return
-	}
-
 	channelChatID := int64(-1002262695419)
 	member, err := bot.GetChatMember(tgbotapi.GetChatMemberConfig{
 		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
