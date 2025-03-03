@@ -24,9 +24,7 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		return
 	}
 
-	isBlocked := user.Banned
-
-	if isBlocked {
+	if user.Banned {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
 		bot.Send(msg)
 		return
@@ -54,9 +52,10 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		return
 	}
 
-	// Остальная логика после проверки подписки...
+	// Проверяем, существует ли пользователь
 	existingUser, err := h.services.GetUserInfoById(int(telegramID))
 	if err == nil {
+		// Пользователь найден - отправляем ему главное меню
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
 			"Welcome back, %s!",
 			existingUser.Username,
@@ -66,6 +65,7 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		return
 	}
 
+	// Проверяем, является ли ошибка "record not found"
 	if err != nil && !strings.Contains(err.Error(), "record not found") {
 		log.Printf("Error checking user existence: %v", err)
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
@@ -73,7 +73,10 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		return
 	}
 
-	// Отправка видео
+	// Новый пользователь - начинаем регистрацию
+	log.Printf("New user detected, starting registration for Telegram ID: %d", telegramID)
+
+	// Отправка видео с инструкцией
 	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FilePath("uploads/start.mp4"))
 	video.Caption = "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law."
 	url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
@@ -84,8 +87,10 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	)
 	bot.Send(video)
 
+	// Устанавливаем состояние регистрации
 	h.userStates[telegramID] = "username"
 
+	// Запрашиваем имя пользователя
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your name:")
 	bot.Send(msg)
 }
