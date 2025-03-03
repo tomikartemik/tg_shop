@@ -16,32 +16,6 @@ import (
 func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	telegramID := update.Message.From.ID
 
-	user, err := h.services.GetUserById(int(telegramID))
-	if err != nil {
-		user := model.User{
-			TelegramID: int(telegramID),
-			Username:   string(telegramID),
-		}
-
-		_, err := h.services.CreateOrUpdateUser(user)
-		if err != nil {
-			log.Printf("Error updating username: %v", err)
-			if strings.Contains(err.Error(), "duplicate") {
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Username is already taken.")
-				bot.Send(msg)
-			}
-			return
-		}
-	}
-
-	isBlocked := user.Banned
-
-	if isBlocked {
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
-		bot.Send(msg)
-		return
-	}
-
 	channelChatID := int64(-1002262695419)
 	member, err := bot.GetChatMember(tgbotapi.GetChatMemberConfig{
 		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{
@@ -67,6 +41,21 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	// Остальная логика после проверки подписки...
 	existingUser, err := h.services.GetUserInfoById(int(telegramID))
 	if err == nil {
+		user, err := h.services.GetUserById(int(telegramID))
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		isBlocked := user.Banned
+
+		if isBlocked {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
+			bot.Send(msg)
+			return
+		}
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(
 			"Welcome back, %s!",
 			existingUser.Username,
@@ -82,22 +71,6 @@ func (h *Handler) HandleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		bot.Send(msg)
 		return
 	}
-
-	// Отправка видео
-	video := tgbotapi.NewVideo(update.Message.Chat.ID, tgbotapi.FilePath("uploads/start.mp4"))
-	video.Caption = "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law."
-	url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
-	video.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
-		),
-	)
-	bot.Send(video)
-
-	h.userStates[telegramID] = "username"
-
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please enter your name:")
-	bot.Send(msg)
 }
 
 func (h *Handler) HandleKeyboardButton(bot *tgbotapi.BotAPI, update tgbotapi.Update, messageText string) {
@@ -489,18 +462,21 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 				return
 			}
 
-			update := tgbotapi.Update{
-				Message: &tgbotapi.Message{
-					Chat: &tgbotapi.Chat{
-						ID: chatID,
-					},
-					From: &tgbotapi.User{
-						ID: telegramID,
-					},
-					Text: "/start",
-				},
-			}
-			h.HandleStart(bot, update)
+			// Отправка видео
+			video := tgbotapi.NewVideo(chatID, tgbotapi.FilePath("uploads/start.mp4"))
+			video.Caption = "Welcome to Hell Market Bot!\n\nHell Market Bot is the place where you can safely purchase products from trusted sellers and list your own items for sale.\nOur goal is to make interaction between people as safe and fast as possible.\n\nEach listing is manually reviewed, ensuring 100% compliance and quality of the material you purchase.\n\nYou can learn more about how bot works by clicking on the article below this message. The guide will explain how this bot operates.\n\nAll important information and FAQ will be collected in the \"Important\" section in the main menu.\n\nDisclaimer: Our service works only with verified sellers. Any actions outside the law of any country will be stopped and condemned. All actions within this bot are conducted strictly within the bounds of the law."
+			url := "https://telegra.ph/Instructions-for-working-with-the-bot-12-19"
+			video.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonURL("📘 Open Instructions", url),
+				),
+			)
+			bot.Send(video)
+
+			h.userStates[telegramID] = "username"
+
+			msg := tgbotapi.NewMessage(chatID, "Please enter your name:")
+			bot.Send(msg)
 			return
 		case "add_balance":
 			h.userStates[callbackQuery.From.ID] = "adding_balance"
