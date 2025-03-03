@@ -624,22 +624,6 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 	telegramID := update.Message.From.ID
 	messageText := strings.TrimSpace(update.Message.Text)
 
-	user, err := h.services.GetUserById(int(telegramID))
-	if err != nil {
-		log.Printf("Error fetching user: %v", err)
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
-		bot.Send(msg)
-		return
-	}
-
-	isBlocked := user.Banned
-
-	if isBlocked {
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
-		bot.Send(msg)
-		return
-	}
-
 	if messageText == "❌ Cancel" || messageText == "❌ Exit" {
 		delete(h.userStates, telegramID)
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Operation has been canceled.")
@@ -817,6 +801,13 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 			log.Printf("Payout request created with ID: %d", payoutID)
 
 			// Отправка сообщения в группу модерации
+			user, err := h.services.GetUserById(int(telegramID))
+			if err != nil {
+				log.Printf("Error fetching user: %v", err)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+				bot.Send(msg)
+				return
+			}
 			payoutGroupID, _ := strconv.ParseInt(os.Getenv("GROUP_WITHDRAWAL_ID"), 10, 64)
 			messageID, err := h.SendPayoutRequestToModeration(bot, user, amount, payoutGroupID, payoutID, username, wallet)
 			if err != nil {
@@ -1071,6 +1062,21 @@ func (h *Handler) HandleUserInput(bot *tgbotapi.BotAPI, update tgbotapi.Update) 
 
 		h.sendMainMenu(bot, update.Message.Chat.ID)
 	} else {
+		user, err := h.services.GetUserById(int(telegramID))
+		if err != nil {
+			log.Printf("Error fetching user: %v", err)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "An error occurred. Please try again later.")
+			bot.Send(msg)
+			return
+		}
+
+		isBlocked := user.Banned
+
+		if isBlocked {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "You are blocked and cannot use this bot.")
+			bot.Send(msg)
+			return
+		}
 		h.HandleKeyboardButton(bot, update, messageText)
 	}
 }
