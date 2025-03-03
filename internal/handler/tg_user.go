@@ -389,25 +389,7 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 		}
 		h.NotifyPayout(bot, user, payout.Amount, false)
 
-	} else {
-		user, err := h.services.GetUserById(int(chatID))
-		if err != nil {
-			log.Printf("Error fetching user: %v", err)
-			msg := tgbotapi.NewMessage(chatID, "An error occurred. Please try again later.")
-			bot.Send(msg)
-			return
-		}
-
-		isBlocked := user.Banned
-
-		if isBlocked {
-			msg := tgbotapi.NewMessage(chatID, "You are blocked and cannot use this bot.")
-			bot.Send(msg)
-			return
-		}
-	}
-
-	if strings.HasPrefix(data, "rate_") {
+	} else if strings.HasPrefix(data, "rate_") {
 		parts := strings.Split(data, "_")
 		if len(parts) != 3 {
 			log.Printf("Invalid rating callback data: %s", data)
@@ -604,7 +586,21 @@ func (h *Handler) HandleCallbackQuery(bot *tgbotapi.BotAPI, callbackQuery *tgbot
 			bot.Send(msg)
 			h.userStates[callbackQuery.From.ID] = "changing_photo"
 		default:
+			user, err := h.services.GetUserById(int(chatID))
+			if err != nil {
+				log.Printf("Error fetching user: %v", err)
+				msg := tgbotapi.NewMessage(chatID, "An error occurred. Please try again later.")
+				bot.Send(msg)
+				return
+			}
 
+			isBlocked := user.Banned
+
+			if isBlocked {
+				msg := tgbotapi.NewMessage(chatID, "You are blocked and cannot use this bot.")
+				bot.Send(msg)
+				return
+			}
 		}
 	}
 }
