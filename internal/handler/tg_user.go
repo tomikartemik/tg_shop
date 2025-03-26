@@ -1157,8 +1157,8 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 
 	case "creating_ad_price":
 		price, err := strconv.ParseFloat(messageText, 64)
-		if err != nil {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid price. Please enter a numeric value:")
+		if err != nil || price < 0 { // Добавлена проверка price <= 0
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid price. Please enter a positive numeric value:")
 			msg.ReplyMarkup = getExitKeyboard()
 			bot.Send(msg)
 			return
@@ -1213,8 +1213,8 @@ func (h *Handler) handleAdCreation(bot *tgbotapi.BotAPI, update tgbotapi.Update,
 		}
 
 		stock, err := strconv.Atoi(messageText)
-		if err != nil {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Invalid stock. Please enter a numeric value or press '♾️ Неограниченное количество':")
+		if err != nil || stock <= 0 { // Добавлена проверка stock <= 0
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "❌ Invalid quantity. Please enter a positive number or select '♾️ Unlimited':")
 			msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
 				tgbotapi.NewKeyboardButtonRow(
 					tgbotapi.NewKeyboardButton("♾️ Unlimited"),
