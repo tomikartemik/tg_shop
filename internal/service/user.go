@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"tg_shop/internal/model"
 	"tg_shop/internal/repository"
+	"tg_shop/utils"
 	"time"
 )
 
@@ -230,7 +231,7 @@ func (s *UserService) ChangeBalance(userID int, newBalance float64) error {
 		return fmt.Errorf("failed to fetch user: %w", err)
 	}
 
-	user.Balance = newBalance
+	user.Balance = utils.RoundToTwoDecimalPlaces(newBalance)
 	_, updateErr := s.repo.UpdateUser(user)
 	if updateErr != nil {
 		return fmt.Errorf("failed to change balance: %w", updateErr)
@@ -335,6 +336,10 @@ func (s *UserService) Purchase(request model.PurchaseRequest) error {
 
 	sellerNewHoldBalance := seller.HoldBalance + priceForSeller
 	buyerNewBalance := buyer.Balance - ad.Price
+
+	priceForSeller = utils.RoundToTwoDecimalPlaces(priceForSeller)
+	sellerNewHoldBalance = utils.RoundToTwoDecimalPlaces(sellerNewHoldBalance)
+	buyerNewBalance = utils.RoundToTwoDecimalPlaces(buyerNewBalance)
 
 	if err = s.repo.ChangeHoldBalance(seller.TelegramID, sellerNewHoldBalance); err != nil {
 		return err
@@ -485,7 +490,7 @@ func (s *UserService) convertUserToUserInfo(telegramID int) (model.UserInfo, err
 		TelegramID:   user.TelegramID,
 		Username:     user.Username,
 		PhotoURL:     user.PhotoURL,
-		Balance:      user.Balance,
+		Balance:      utils.RoundToTwoDecimalPlaces(user.Balance),
 		Ads:          ads,
 		Purchased:    purchased,
 		Rating:       user.Rating,
